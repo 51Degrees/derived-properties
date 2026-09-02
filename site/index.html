@@ -214,6 +214,184 @@ function typeWord(value) {
  * supplied at all, which is a request where everything is absent.
  */
 // ------------------------------------------------------------------
+// Working backwards from an answer to the properties that give it.
+//
+// Reading a script forwards tells you what a request produces. Reading
+// it backwards, being what a request would have to look like to come out
+// High, is the question somebody writing rules actually asks, and it is
+// tedious to answer by hand once there are more than a couple of checks.
+//
+// This is a search rather than anything clever. A script compares each
+// property against a handful of literals, so the values worth trying are
+// those literals and their neighbours, which makes the space small
+// enough to walk. It tries the fewest changes first, so what comes back
+// is the smallest edit to what is already on screen rather than some
+// unrelated request that happens to work.
+// ------------------------------------------------------------------
+
+/** Every literal the script compares each property against. */
+function literalsByProperty(model) {
+  const found = new Map();
+  const add = (name, value) => {
+    if (!found.has(name)) found.set(name, []);
+    const list = found.get(name);
+    if (!list.includes(value)) list.push(value);
+  };
+  const walk = (condition) => {
+    if (condition === null || typeof condition !== 'object') return;
+    if (condition.kind === 'compare') {
+      const values = Array.isArray(condition.operand)
+        ? condition.operand
+        : [condition.operand];
+      for (const value of values) add(condition.propertyName, value);
+      return;
+    }
+    if (Array.isArray(condition.items)) condition.items.forEach(walk);
+    if (condition.item) walk(condition.item);
+  };
+  for (const check of model.checks) walk(check.condition);
+  for (const rule of model.rules) if (rule.when) walk(rule.when);
+  return found;
+}
+
+/**
+ * What is worth trying for one property. A comparison only ever comes
+ * out true or false, so the values that matter are the literals the
+ * script names and the ones either side of them, which is where a
+ * comparison changes its mind.
+ */
+function candidatesFor(property, literals) {
+  if (property.type === 'bool') return ['true', 'false'];
+
+  if (property.type === 'int' || property.type === 'double') {
+    const numbers = new Set(['0', '-1']);
+    const step = property.type === 'int' ? 1 : 0.5;
+    for (const literal of literals) {
+      const value = Number(literal);
+      if (Number.isNaN(value)) continue;
+      numbers.add(String(value - step));
+      numbers.add(String(value));
+      numbers.add(String(value + step));
+    }
+    return [...numbers];
+  }
+
+  // A string either matches a literal or matches none of them, so one
+  // value belonging to no list stands for every value that fails.
+  return [...literals.map(String), 'something else'];
+}
+
+/**
+ * Finds values that make the script produce `wanted`, changing as few of
+ * them as possible from what is set now. Returns the settings, or null
+ * where nothing within reach produces it.
+ */
+function solveFor(model, wanted) {
+  const literals = literalsByProperty(model);
+  const options = model.properties.map(property => ({
+    property,
+    values: candidatesFor(property, literals.get(property.name) ?? [])
+  }));
+
+  // Everything present, because a value needs every property the script
+  // names and one left absent would lose the value whatever else was set.
+  const start = new Map();
+  for (const property of model.properties) {
+    const state = supplied.get(property.name);
+    start.set(property.name, {
+      way: 'value',
+      text: state?.text ?? defaultText(property.type)
+    });
+  }
+
+  const produces = (settings) => {
+    const properties = {};
+    for (const property of model.properties) {
+      const state = settings.get(property.name);
+      properties[property.name] = nativeValue(property.type, state.text);
+    }
+    return evaluate(model, properties).value;
+  };
+
+  if (produces(start) === wanted) return start;
+
+  // Fewest changes first, which answers the common case of being one or
+  // two properties away from the answer and says exactly which ones.
+  // Three is as far as this goes, because every further step multiplies
+  // the work and the sampling below reaches anything deeper far quicker.
+  for (let changes = 1; changes <= 3; changes++) {
+    const answer = search(options, start, wanted, produces, changes);
+    if (answer !== null) return answer;
+  }
+
+  // Further away, so stop being exhaustive. Trying whole requests at
+  // random finds an answer quickly wherever one is common, and the
+  // tidying below turns whatever it lands on back into a small edit.
+  for (let attempt = 0; attempt < 20000; attempt++) {
+    const settings = new Map();
+    for (const option of options) {
+      const values = option.values;
+      settings.set(option.property.name, {
+        way: 'value',
+        text: values[Math.floor(Math.random() * values.length)]
+      });
+    }
+    if (produces(settings) === wanted) {
+      return fewestChanges(options, start, settings, wanted, produces);
+    }
+  }
+  return null;
+}
+
+/**
+ * Puts back everything the answer did not need. A random request usually
+ * differs from what is on screen in more properties than the answer
+ * turns on, and every one of those is a change a reader has to read and
+ * wonder about.
+ */
+function fewestChanges(options, start, found, wanted, produces) {
+  for (const option of options) {
+    const name = option.property.name;
+    const changed = found.get(name);
+    found.set(name, start.get(name));
+    if (produces(found) !== wanted) found.set(name, changed);
+  }
+  return found;
+}
+
+/** Tries every way of changing exactly `changes` of the properties. */
+function search(options, start, wanted, produces, changes) {
+  const chosen = [];
+
+  const overValues = (index, settings) => {
+    if (index === chosen.length) {
+      return produces(settings) === wanted ? settings : null;
+    }
+    const option = chosen[index];
+    for (const value of option.values) {
+      settings.set(option.property.name, { way: 'value', text: value });
+      const answer = overValues(index + 1, settings);
+      if (answer !== null) return answer;
+    }
+    settings.set(option.property.name, start.get(option.property.name));
+    return null;
+  };
+
+  const overSubsets = (from, left) => {
+    if (left === 0) return overValues(0, new Map(start));
+    for (let i = from; i <= options.length - left; i++) {
+      chosen.push(options[i]);
+      const answer = overSubsets(i + 1, left - 1);
+      chosen.pop();
+      if (answer !== null) return answer;
+    }
+    return null;
+  };
+
+  return overSubsets(0, changes);
+}
+
+// ------------------------------------------------------------------
 // The input boxes, one per property the script names.
 //
 // A property arrives in one of four ways and the choice matters more
@@ -252,6 +430,8 @@ function buildFields(model) {
     return;
   }
 
+  fieldsBox.appendChild(wantedPills(model));
+
   const wrap = el('div', 'c-eg-section c-eg-fields');
   const node = el('table', 'c-eg-table');
   const head = el('thead', 'c-eg-table__head');
@@ -269,6 +449,51 @@ function buildFields(model) {
   node.appendChild(body);
   wrap.appendChild(node);
   fieldsBox.appendChild(wrap);
+}
+
+/**
+ * One button per value the script can return, which fills the boxes in
+ * with a request that produces it.
+ *
+ * Only for a script whose output lists its values, and only where those
+ * values are text. A number has no fixed set to offer, and asking for
+ * one arbitrary number out of a range would teach a reader nothing.
+ */
+function wantedPills(model) {
+  const wrap = el('div', 'c-eg-section');
+  const values = model.output.Values;
+  if (!Array.isArray(values) || values.length === 0 ||
+    String(model.output.ValueType).toLowerCase() !== 'string') {
+    return wrap;
+  }
+
+  wrap.appendChild(el('p', null,
+    'Or choose the answer and let the page work out a request that ' +
+    'produces it, changing as few properties as it can.'));
+
+  const row = el('div', 'c-eg-controls');
+  for (const value of values) {
+    const button = el('button', 'b-btn b-btn--secondary', String(value.Name));
+    button.type = 'button';
+    button.title = value.Description ?? '';
+    button.addEventListener('click', () => {
+      const answer = solveFor(model, value.Name);
+      if (answer === null) {
+        status.textContent =
+          `No request the page tried produces ${value.Name}.`;
+        return;
+      }
+      for (const [name, state] of answer) supplied.set(name, state);
+      // The boxes hold the old values, so they are thrown away and built
+      // again rather than each one being reached into.
+      builtFor = null;
+      run();
+      status.textContent = `Set the properties to produce ${value.Name}.`;
+    });
+    row.appendChild(button);
+  }
+  wrap.appendChild(row);
+  return wrap;
 }
 
 /** One row, being the property, how it arrives, and what it holds. */
