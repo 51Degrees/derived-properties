@@ -46,7 +46,7 @@
 <link rel="stylesheet" href="examples-main.min.css">
 </head>
 <body>
-<div class="c-eg-page">
+<div class="c-eg-page c-eg-page--wide">
 
   <p><img src="51degrees-logo.png" width="360" height="67"
     alt="51Degrees"></p>
@@ -71,9 +71,9 @@
     repository.</p>
 
   <div class="c-eg-section">
-    <div class="c-eg-button-row">
+    <div class="c-eg-controls">
       <label class="b-label" for="choice">Script</label>
-      <select class="b-input" id="choice"></select>
+      <select class="c-eg-control" id="choice"></select>
       <button type="button" class="b-btn" id="run">Run</button>
       <span class="c-eg-status c-eg-status--none" id="status"></span>
     </div>
@@ -273,7 +273,7 @@ function fieldRow(property) {
   tr.appendChild(cell(el('span', 'b-text--code', property.name)));
   tr.appendChild(cell(el('span', null, property.type)));
 
-  const way = el('select', 'b-input');
+  const way = el('select', 'c-eg-control');
   for (const [value, label] of WAYS) {
     const option = el('option', null, label);
     option.value = value;
@@ -297,7 +297,7 @@ function fieldRow(property) {
     // other case is typed, including a boolean in its text form, where
     // the whole point may be to try something that cannot be read.
     if (state.way === 'value' && property.type === 'bool') {
-      const choose = el('select', 'b-input');
+      const choose = el('select', 'c-eg-control');
       for (const word of ['true', 'false']) {
         const option = el('option', null, word);
         option.value = word;
@@ -311,7 +311,7 @@ function fieldRow(property) {
       valueCell.appendChild(choose);
       return;
     }
-    const box = el('input', 'b-input');
+    const box = el('input', 'c-eg-control');
     box.type = 'text';
     box.value = state.text;
     box.placeholder = state.way === 'novalue'
