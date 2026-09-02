@@ -130,6 +130,10 @@ const status = document.getElementById('status');
 // rebuilds the boxes without losing what was typed into them.
 const supplied = new Map();
 
+// The script the box last validated as, which the buttons that fill the
+// boxes in read. Null whilst the box holds nothing that validates.
+let current = null;
+
 // ------------------------------------------------------------------
 // Small helpers for building the report.
 // ------------------------------------------------------------------
@@ -214,19 +218,20 @@ function typeWord(value) {
  * supplied at all, which is a request where everything is absent.
  */
 // ------------------------------------------------------------------
-// Working backwards from an answer to the properties that give it.
+// Working backwards from an answer to the requests that give it.
 //
 // Reading a script forwards tells you what a request produces. Reading
 // it backwards, being what a request would have to look like to come out
 // High, is the question somebody writing rules actually asks, and it is
 // tedious to answer by hand once there are more than a couple of checks.
 //
-// This is a search rather than anything clever. A script compares each
+// This is a walk rather than anything clever. A script compares each
 // property against a handful of literals, so the values worth trying are
 // those literals and their neighbours, which makes the space small
-// enough to walk. It tries the fewest changes first, so what comes back
-// is the smallest edit to what is already on screen rather than some
-// unrelated request that happens to work.
+// enough to try in full. Every request that comes out High is kept, and
+// the button hands out a different one on each press, so pressing it
+// repeatedly shows the several unrelated ways a request can reach the
+// same answer rather than one specimen of them.
 // ------------------------------------------------------------------
 
 /** Every literal the script compares each property against. */
@@ -281,114 +286,161 @@ function candidatesFor(property, literals) {
   return [...literals.map(String), 'something else'];
 }
 
-/**
- * Finds values that make the script produce `wanted`, changing as few of
- * them as possible from what is set now. Returns the settings, or null
- * where nothing within reach produces it.
- */
-function solveFor(model, wanted) {
+/** What is worth trying for each property the script names. */
+function requestSpace(model) {
   const literals = literalsByProperty(model);
-  const options = model.properties.map(property => ({
+  return model.properties.map(property => ({
     property,
     values: candidatesFor(property, literals.get(property.name) ?? [])
   }));
+}
 
-  // Everything present, because a value needs every property the script
-  // names and one left absent would lose the value whatever else was set.
-  const start = new Map();
-  for (const property of model.properties) {
-    const state = supplied.get(property.name);
-    start.set(property.name, {
-      way: 'value',
-      text: state?.text ?? defaultText(property.type)
-    });
-  }
+// How much of the space is walked in full. Beyond this the page takes a
+// large random sample instead, because a button nobody waits for is
+// worth more than the last few requests of a space this size.
+const WALK_LIMIT = 120000;
+const SAMPLE = 40000;
 
-  const produces = (settings) => {
+// How many requests are held for each value. Enough that pressing a
+// button over and over keeps showing something new, and few enough that
+// a script naming a dozen properties does not fill the browser with
+// requests nobody will ever see.
+const KEEP = 400;
+
+/**
+ * Every request the page will offer, grouped by the value it produces.
+ * The whole space is walked where it is small enough, and sampled where
+ * it is not.
+ */
+function buildPool(model) {
+  const options = requestSpace(model);
+  const byValue = new Map();
+  const texts = new Array(options.length);
+
+  const record = () => {
     const properties = {};
-    for (const property of model.properties) {
-      const state = settings.get(property.name);
-      properties[property.name] = nativeValue(property.type, state.text);
+    for (let i = 0; i < options.length; i++) {
+      properties[options[i].property.name] =
+        nativeValue(options[i].property.type, texts[i]);
     }
-    return evaluate(model, properties).value;
+    const value = evaluate(model, properties).value;
+    if (value === undefined) return;
+    if (!byValue.has(value)) byValue.set(value, { found: 0, kept: [] });
+    const bucket = byValue.get(value);
+    bucket.found++;
+    if (bucket.kept.length < KEEP) {
+      bucket.kept.push(texts.slice());
+      return;
+    }
+    // Once the room is full, what is held is spread evenly across
+    // everything found rather than being whichever corner of the space
+    // happened to be walked first, so the requests the button offers do
+    // not all look alike.
+    const at = Math.floor(Math.random() * bucket.found);
+    if (at < KEEP) bucket.kept[at] = texts.slice();
   };
 
-  if (produces(start) === wanted) return start;
+  let size = 1;
+  for (const option of options) size *= option.values.length;
 
-  // Fewest changes first, which answers the common case of being one or
-  // two properties away from the answer and says exactly which ones.
-  // Three is as far as this goes, because every further step multiplies
-  // the work and the sampling below reaches anything deeper far quicker.
-  for (let changes = 1; changes <= 3; changes++) {
-    const answer = search(options, start, wanted, produces, changes);
-    if (answer !== null) return answer;
+  if (size <= WALK_LIMIT) {
+    const walk = (index) => {
+      if (index === options.length) {
+        record();
+        return;
+      }
+      for (const text of options[index].values) {
+        texts[index] = text;
+        walk(index + 1);
+      }
+    };
+    walk(0);
+    return { byValue, complete: true };
   }
 
-  // Further away, so stop being exhaustive. Trying whole requests at
-  // random finds an answer quickly wherever one is common, and the
-  // tidying below turns whatever it lands on back into a small edit.
-  for (let attempt = 0; attempt < 20000; attempt++) {
-    const settings = new Map();
-    for (const option of options) {
-      const values = option.values;
-      settings.set(option.property.name, {
-        way: 'value',
-        text: values[Math.floor(Math.random() * values.length)]
-      });
+  const seen = new Set();
+  for (let attempt = 0; attempt < SAMPLE; attempt++) {
+    for (let i = 0; i < options.length; i++) {
+      const values = options[i].values;
+      texts[i] = values[Math.floor(Math.random() * values.length)];
     }
-    if (produces(settings) === wanted) {
-      return fewestChanges(options, start, settings, wanted, produces);
-    }
+    const key = texts.join(' ');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    record();
   }
-  return null;
+  return { byValue, complete: false };
+}
+
+// The pool for the script in the box, kept until the script text
+// changes, because building it means running the script over the whole
+// space and every press after the first is then immediate.
+let pool = null;
+let pooledFor = null;
+
+// Where each value has reached in its own shuffled order. Walking an
+// order rather than picking at random is what stops the same request
+// coming up twice in a row, and means every request is shown once
+// before any is shown again.
+let cursors = new Map();
+
+function poolFor(model, key) {
+  if (key !== pooledFor) {
+    pool = buildPool(model);
+    pooledFor = key;
+    cursors = new Map();
+  }
+  return pool;
 }
 
 /**
- * Puts back everything the answer did not need. A random request usually
- * differs from what is on screen in more properties than the answer
- * turns on, and every one of those is a change a reader has to read and
- * wonder about.
+ * The next request that produces `wanted`, being a different one on
+ * every press. Returns null where nothing the page tried produces it.
  */
-function fewestChanges(options, start, found, wanted, produces) {
-  for (const option of options) {
-    const name = option.property.name;
-    const changed = found.get(name);
-    found.set(name, start.get(name));
-    if (produces(found) !== wanted) found.set(name, changed);
-  }
-  return found;
+function nextRequest(model, key, wanted) {
+  const built = poolFor(model, key);
+  const bucket = built.byValue.get(wanted);
+  if (bucket === undefined || bucket.kept.length === 0) return null;
+
+  const take = () => {
+    let cursor = cursors.get(wanted);
+    if (cursor === undefined || cursor.at >= cursor.order.length) {
+      cursor = { order: shuffled(bucket.kept.length), at: 0 };
+      cursors.set(wanted, cursor);
+    }
+    return bucket.kept[cursor.order[cursor.at++]];
+  };
+
+  let texts = take();
+  // A request identical to what is already on screen would look like
+  // the button had done nothing, so it is passed over wherever there is
+  // anything else to offer.
+  if (bucket.kept.length > 1 && sameAsScreen(model, texts)) texts = take();
+
+  const settings = new Map();
+  model.properties.forEach((property, i) => {
+    settings.set(property.name, { way: 'value', text: texts[i] });
+  });
+  return { settings, found: bucket.found, complete: built.complete };
 }
 
-/** Tries every way of changing exactly `changes` of the properties. */
-function search(options, start, wanted, produces, changes) {
-  const chosen = [];
+/** Whether a request is the one the boxes already hold. */
+function sameAsScreen(model, texts) {
+  return model.properties.every((property, i) => {
+    const state = supplied.get(property.name);
+    return state !== undefined && state.way === 'value' &&
+      state.text === texts[i];
+  });
+}
 
-  const overValues = (index, settings) => {
-    if (index === chosen.length) {
-      return produces(settings) === wanted ? settings : null;
-    }
-    const option = chosen[index];
-    for (const value of option.values) {
-      settings.set(option.property.name, { way: 'value', text: value });
-      const answer = overValues(index + 1, settings);
-      if (answer !== null) return answer;
-    }
-    settings.set(option.property.name, start.get(option.property.name));
-    return null;
-  };
-
-  const overSubsets = (from, left) => {
-    if (left === 0) return overValues(0, new Map(start));
-    for (let i = from; i <= options.length - left; i++) {
-      chosen.push(options[i]);
-      const answer = overSubsets(i + 1, left - 1);
-      chosen.pop();
-      if (answer !== null) return answer;
-    }
-    return null;
-  };
-
-  return overSubsets(0, changes);
+/** The numbers below `count` in a random order. */
+function shuffled(count) {
+  const order = [...Array(count).keys()];
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  return order;
 }
 
 // ------------------------------------------------------------------
@@ -416,9 +468,13 @@ let builtFor = null;
  * where the model names the same properties as last time.
  */
 function buildFields(model) {
+  // The values the output lists are part of the signature as well as the
+  // properties, because each one has a button of its own and adding a
+  // value to a script has to add its button.
   const signature = model === null
     ? null
-    : model.properties.map(p => `${p.name}:${p.type}`).join(',');
+    : model.properties.map(p => `${p.name}:${p.type}`).join(',') + '|' +
+      JSON.stringify(model.output.Values ?? null);
   if (signature !== null && signature === builtFor) return;
   builtFor = signature;
 
@@ -468,8 +524,10 @@ function wantedPills(model) {
   }
 
   wrap.appendChild(el('p', null,
-    'Or choose the answer and let the page work out a request that ' +
-    'produces it, changing as few properties as it can.'));
+    'Or choose the answer and let the page fill the boxes in with a ' +
+    'request that produces it. Press the same one again for another ' +
+    'way of reaching it, because most answers are reached by several ' +
+    'quite different requests.'));
 
   const row = el('div', 'c-eg-controls');
   for (const value of values) {
@@ -477,18 +535,27 @@ function wantedPills(model) {
     button.type = 'button';
     button.title = value.Description ?? '';
     button.addEventListener('click', () => {
-      const answer = solveFor(model, value.Name);
+      // The script in the box is read again rather than the one these
+      // buttons were built for, because editing a rule leaves the
+      // buttons standing whilst changing what produces what.
+      if (current === null) return;
+      const answer = nextRequest(current, scriptBox.value, value.Name);
       if (answer === null) {
         status.textContent =
           `No request the page tried produces ${value.Name}.`;
         return;
       }
-      for (const [name, state] of answer) supplied.set(name, state);
+      for (const [name, state] of answer.settings) supplied.set(name, state);
       // The boxes hold the old values, so they are thrown away and built
       // again rather than each one being reached into.
       builtFor = null;
       run();
-      status.textContent = `Set the properties to produce ${value.Name}.`;
+      status.textContent = answer.complete
+        ? `${answer.found} of the requests the page can build produce ` +
+          `${value.Name}, and the boxes hold one of them. Press ` +
+          `${value.Name} again for another.`
+        : 'The boxes hold one of the requests that produce ' +
+          `${value.Name}. Press ${value.Name} again for another.`;
     });
     row.appendChild(button);
   }
@@ -801,6 +868,7 @@ function run() {
   output.textContent = '';
   resultBox.textContent = '';
   status.textContent = '';
+  current = null;
 
   // An empty box is somebody about to paste, not a script with a hundred
   // things wrong with it, so it is asked for rather than reported on.
@@ -849,6 +917,7 @@ function run() {
   }
 
   const model = validated.model;
+  current = model;
   buildFields(model);
   const properties = readFields(model);
   verdict('Validation', true, 'the script is valid');
