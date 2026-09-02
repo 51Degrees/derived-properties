@@ -409,13 +409,22 @@ function nativeValue(type, text) {
 // The report.
 // ------------------------------------------------------------------
 
+/** The heading of a section, with whether it passed said beside it. */
+function verdict(title, good, word) {
+  const heading = section(title);
+  heading.appendChild(document.createTextNode(' '));
+  heading.appendChild(stateBadge(good, word));
+}
+
 function reportFaults(faults) {
-  section('Validation');
+  verdict('Validation', false, 'the script is not valid');
   const card = el('div', 'c-eg-alert');
   card.appendChild(el('p', null, faults.length === 1
-    ? 'The script has 1 fault, so there is no model to run.'
-    : `The script has ${faults.length} faults, so there is no model to ` +
-      'run.'));
+    ? 'The script is not valid. It has 1 fault, so there is no model to ' +
+      'run and nothing below this point could be worked out.'
+    : `The script is not valid. It has ${faults.length} faults, so there ` +
+      'is no model to run and nothing below this point could be worked ' +
+      'out.'));
   card.appendChild(table(['Path', 'Line', 'Message'], faults.map(fault => [
     el('span', 'b-text--code', fault.path === '' ? '(document)' : fault.path),
     fault.line === null || fault.line === undefined ? '' : fault.line,
@@ -568,6 +577,21 @@ function run() {
   resultBox.textContent = '';
   status.textContent = '';
 
+  // An empty box is somebody about to paste, not a script with a hundred
+  // things wrong with it, so it is asked for rather than reported on.
+  if (scriptBox.value.trim() === '') {
+    buildFields(null);
+    const card = el('div', 'c-eg-result');
+    card.appendChild(el('span', 'c-eg-result__label', 'Nothing to run'));
+    card.appendChild(el('p', 'c-eg-result__value', 'Paste a script'));
+    card.appendChild(el('p', 'c-eg-result__note',
+      'Paste a script into the box below, or choose one of the scripts ' +
+      '51Degrees ships from the list above. The page checks it as you ' +
+      'type.'));
+    resultBox.appendChild(card);
+    return;
+  }
+
   // The script is read first, because the boxes on the right are the
   // properties it names, so there is nothing to read until it validates.
   let validated;
@@ -602,7 +626,7 @@ function run() {
   const model = validated.model;
   buildFields(model);
   const properties = readFields(model);
-  section('Validation');
+  verdict('Validation', true, 'the script is valid');
   const clean = el('div', 'c-eg-section');
   clean.appendChild(el('p', null, `The script is valid. ` +
     `${model.name} version ${model.version} produces ` +
@@ -643,13 +667,22 @@ function run() {
 
 const OWN = 'Your own script';
 
+/**
+ * Which script the page opens on. It has to be one 51Degrees ships, so
+ * that a reader arriving sees the thing working rather than an empty box
+ * or an invented example. Where the name is not in the list, the first
+ * script is used, and where there are no scripts at all the page opens
+ * on the empty box.
+ */
+const OPENS_ON = 'HumanConfidence';
+
 async function fillChoices() {
   let names = [];
   try {
     const response = await fetch('../scripts/index.json');
     if (response.ok) names = await response.json();
   } catch {
-    // A missing list is not a fault. The page still runs anything typed
+    // A missing list is not a fault. The page still runs anything pasted
     // into the box, which is the part that matters.
   }
   for (const name of names) {
@@ -660,16 +693,21 @@ async function fillChoices() {
   const own = el('option', null, OWN);
   own.value = OWN;
   choiceBox.appendChild(own);
-  choiceBox.value = OWN;
+
+  choiceBox.value = names.includes(OPENS_ON)
+    ? OPENS_ON
+    : (names[0] ?? OWN);
+  await loadChoice();
 }
 
 async function loadChoice() {
   const name = choiceBox.value;
   if (name === OWN) {
-    scriptBox.value = EXAMPLE;
-    // A different script names different properties, so what was set for
-    // the last one no longer applies.
+    // An empty box rather than an invented script, so that what a reader
+    // sees here is their own work and nothing else.
+    scriptBox.value = '';
     supplied.clear();
+    scriptBox.focus();
     run();
     return;
   }
@@ -696,36 +734,8 @@ async function loadChoice() {
 }
 
 // ------------------------------------------------------------------
-// A worked example, so the page does something on first sight.
+// Wiring.
 // ------------------------------------------------------------------
-
-const EXAMPLE = `# A short example showing the shape of a script. Choose a
-# script above for one 51Degrees ships.
-Format: 1
-Name: Example
-Version: 0.1.0
-Output:
-  Name: Example
-  Description: Whether the request looks like a person viewing the page, on the two signals this example reads. Returns Yes or No, and has no value where either signal could not be read.
-  ValueType: string
-  IsList: false
-  Values:
-    - Name: "Yes"
-      Description: Neither signal says the request came from software.
-    - Name: "No"
-      Description: The request is a declared crawler, or the browser is too old.
-Checks:
-  IsCrawler: { Property: device.IsCrawler, Eq: true }
-  Current:   { Property: device.BrowserReleaseAge, Lt: 24 }
-Rules:
-  - When: { Check: IsCrawler }
-    Then: "No"
-  - When: { Failed: [Current], Eq: 0 }
-    Then: "Yes"
-  - Else: "No"
-`;
-
-scriptBox.value = EXAMPLE;
 
 document.getElementById('run').addEventListener('click', run);
 choiceBox.addEventListener('change', loadChoice);
@@ -737,7 +747,6 @@ choiceBox.addEventListener('change', loadChoice);
 scriptBox.addEventListener('input', run);
 
 await fillChoices();
-run();
 </script>
 </body>
 </html>
