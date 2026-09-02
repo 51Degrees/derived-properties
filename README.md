@@ -133,19 +133,21 @@ Each language implementation embeds this repository as a git submodule,
 so the list of them is whatever currently references it. This command
 answers the question rather than a list here going stale.
 
-```
+```text
 gh search code "derived-properties" --filename=".gitmodules" --owner=51Degrees
 ```
 
 ## Trying a script without writing any code
 
-[`site/index.html`](site/index.html) is a single page that runs a script
-against inputs you type and shows which properties were read, what each
-check decided and which rule matched. The page is published through
-GitHub Pages, and the published address goes here once GitHub Pages has
-been switched on for this repository. Until then, open the page from a
-clone through any local web server, because the page loads the tools as
-ES modules and a browser will not load a module from a `file://` address.
+**[Open the script tester](https://51degrees.github.io/derived-properties/)**
+
+[`site/index.html`](site/index.html) runs a script against inputs you
+type and shows which properties were read, what each check decided and
+which rule matched. It is published through GitHub Pages from `main`.
+
+To run it from a clone instead, serve the folder through any local web
+server, because the page loads the tools as ES modules and a browser will
+not load a module from a `file://` address.
 
 ## Documentation
 
