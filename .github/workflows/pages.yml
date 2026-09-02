@@ -43,6 +43,14 @@ jobs:
           # node_modules is a local install and is not part of the page. The
           # page loads js-yaml from a CDN instead.
           rm -rf _site/tools/node_modules
+          # The tester offers every script in the repository in a list, and
+          # a browser cannot read a directory, so the names are written out
+          # here. Generated rather than kept by hand so that a new script
+          # appears in the list without anyone remembering to add it.
+          ls scripts | sed -n 's/\.\(yaml\|yml\|json\)$//p' \
+            | sort | sed 's/.*/"&"/' | paste -sd, - \
+            | sed 's/^/[/; s/$/]/' > _site/scripts/index.json
+          cat _site/scripts/index.json
           cat > _site/index.html <<'HTML'
           <!doctype html>
           <html lang="en">

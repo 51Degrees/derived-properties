@@ -72,9 +72,9 @@
 
   <div class="c-eg-section">
     <div class="c-eg-button-row">
+      <label class="b-label" for="choice">Script</label>
+      <select class="b-input" id="choice"></select>
       <button type="button" class="b-btn" id="run">Run</button>
-      <button type="button" class="b-btn b-btn--secondary" id="load">Load
-        HumanConfidence</button>
       <span class="c-eg-status c-eg-status--none" id="status"></span>
     </div>
   </div>
@@ -82,19 +82,18 @@
   <div class="c-eg-columns">
     <div>
       <label class="b-label" for="script">Script</label>
-      <p>YAML or JSON. Both give the same model.</p>
+      <p>YAML or JSON. Both give the same model. Edit it and the boxes on
+        the right follow.</p>
       <textarea id="script" class="c-eg-editor" rows="22"
         spellcheck="false" autocapitalize="off"
         autocomplete="off" autocorrect="off"></textarea>
     </div>
     <div>
-      <label class="b-label" for="inputs">Input properties</label>
-      <p>YAML mapping from
-        <span class="b-text--code">element.Property</span> to a value. A
-        property left out is absent.</p>
-      <textarea id="inputs" class="c-eg-editor" rows="22"
-        spellcheck="false" autocapitalize="off"
-        autocomplete="off" autocorrect="off"></textarea>
+      <label class="b-label">Input properties</label>
+      <p>One box for each property the script names. Set a property to
+        <em>Absent</em> to watch the whole derived property lose its
+        value, which is the one rule of the format.</p>
+      <div id="fields"></div>
     </div>
   </div>
 
@@ -113,9 +112,15 @@ import { evaluate } from '../tools/evaluate.mjs';
 import { canonical } from '../tools/canonical.mjs';
 
 const scriptBox = document.getElementById('script');
-const inputsBox = document.getElementById('inputs');
+const fieldsBox = document.getElementById('fields');
+const choiceBox = document.getElementById('choice');
 const output = document.getElementById('output');
 const status = document.getElementById('status');
+
+// What each property is currently set to, keyed by the property name as
+// the script writes it. Kept outside the boxes so that editing the script
+// rebuilds the boxes without losing what was typed into them.
+const supplied = new Map();
 
 // ------------------------------------------------------------------
 // Small helpers for building the report.
@@ -200,16 +205,190 @@ function typeWord(value) {
  * Reads the input properties box. An empty box means no property was
  * supplied at all, which is a request where everything is absent.
  */
-function readInputs(text) {
-  if (text.trim() === '') return {};
-  const document_ = parse(text).document;
-  for (const key of Object.keys(document_)) {
-    if (!key.includes('.')) {
-      throw new Error(`the key '${key}' is not written as ` +
-        'element.Property, for example device.IsCrawler');
-    }
+// ------------------------------------------------------------------
+// The input boxes, one per property the script names.
+//
+// A property arrives in one of four ways and the choice matters more
+// than the value does, because the format turns on whether a property is
+// there at all rather than on what it holds.
+// ------------------------------------------------------------------
+
+const WAYS = [
+  ['value', 'Value'],
+  ['text', 'Text form'],
+  ['absent', 'Absent'],
+  ['novalue', 'No value']
+];
+
+// The set of properties the boxes were last built for. Running again
+// with the same set leaves the boxes alone, because rebuilding them
+// while somebody is working in one would take the caret away.
+let builtFor = null;
+
+/**
+ * Rebuilds the boxes for the properties a model names, and does nothing
+ * where the model names the same properties as last time.
+ */
+function buildFields(model) {
+  const signature = model === null
+    ? null
+    : model.properties.map(p => `${p.name}:${p.type}`).join(',');
+  if (signature !== null && signature === builtFor) return;
+  builtFor = signature;
+
+  fieldsBox.textContent = '';
+  if (model === null || model.properties.length === 0) {
+    fieldsBox.appendChild(el('p', null,
+      'The script names no source property, so there is nothing to ' +
+      'supply.'));
+    return;
   }
-  return document_;
+
+  const wrap = el('div', 'c-eg-section');
+  const node = el('table', 'c-eg-table');
+  const head = el('thead', 'c-eg-table__head');
+  const headRow = el('tr', 'c-eg-table__row');
+  for (const heading of ['Property', 'Type', 'Arrives as', 'Value']) {
+    headRow.appendChild(el('th', 'c-eg-table__cell', heading));
+  }
+  head.appendChild(headRow);
+  node.appendChild(head);
+
+  const body = el('tbody');
+  for (const property of model.properties) {
+    body.appendChild(fieldRow(property));
+  }
+  node.appendChild(body);
+  wrap.appendChild(node);
+  fieldsBox.appendChild(wrap);
+}
+
+/** One row, being the property, how it arrives, and what it holds. */
+function fieldRow(property) {
+  const state = supplied.get(property.name) ??
+    { way: 'value', text: defaultText(property.type) };
+  supplied.set(property.name, state);
+
+  const tr = el('tr', 'c-eg-table__row');
+  tr.appendChild(cell(el('span', 'b-text--code', property.name)));
+  tr.appendChild(cell(el('span', null, property.type)));
+
+  const way = el('select', 'b-input');
+  for (const [value, label] of WAYS) {
+    const option = el('option', null, label);
+    option.value = value;
+    if (value === state.way) option.selected = true;
+    way.appendChild(option);
+  }
+  tr.appendChild(cell(way));
+
+  const valueCell = el('td', 'c-eg-table__cell');
+  tr.appendChild(valueCell);
+
+  const draw = () => {
+    valueCell.textContent = '';
+    if (state.way === 'absent') {
+      valueCell.appendChild(el('span', null,
+        'Not supplied on this request.'));
+      return;
+    }
+    // A boolean read as itself has exactly two values, so a list says
+    // more than a box a reader has to guess the spelling for. Every
+    // other case is typed, including a boolean in its text form, where
+    // the whole point may be to try something that cannot be read.
+    if (state.way === 'value' && property.type === 'bool') {
+      const choose = el('select', 'b-input');
+      for (const word of ['true', 'false']) {
+        const option = el('option', null, word);
+        option.value = word;
+        if (word === state.text) option.selected = true;
+        choose.appendChild(option);
+      }
+      choose.addEventListener('change', () => {
+        state.text = choose.value;
+        run();
+      });
+      valueCell.appendChild(choose);
+      return;
+    }
+    const box = el('input', 'b-input');
+    box.type = 'text';
+    box.value = state.text;
+    box.placeholder = state.way === 'novalue'
+      ? 'the reason there is no value'
+      : placeholderFor(property.type);
+    box.addEventListener('input', () => { state.text = box.value; });
+    box.addEventListener('change', run);
+    valueCell.appendChild(box);
+  };
+
+  way.addEventListener('change', () => {
+    state.way = way.value;
+    if (state.way === 'novalue' && state.text === defaultText(property.type)) {
+      state.text = 'the JavaScript has not run yet';
+    }
+    draw();
+    run();
+  });
+
+  draw();
+  return tr;
+}
+
+function cell(child) {
+  const td = el('td', 'c-eg-table__cell');
+  td.appendChild(child);
+  return td;
+}
+
+function defaultText(type) {
+  if (type === 'bool') return 'true';
+  if (type === 'int') return '0';
+  if (type === 'double') return '0.0';
+  return '';
+}
+
+function placeholderFor(type) {
+  if (type === 'int') return 'a whole number';
+  if (type === 'double') return 'a number';
+  if (type === 'bool') return 'true or false';
+  return 'text';
+}
+
+/**
+ * Turns the boxes into the properties the evaluator reads. A property
+ * set to Absent is left out entirely, which is how a property that no
+ * element supplied arrives.
+ */
+function readFields(model) {
+  const properties = {};
+  for (const property of model.properties) {
+    const state = supplied.get(property.name);
+    if (state === undefined || state.way === 'absent') continue;
+    if (state.way === 'text') {
+      properties[property.name] = { String: state.text };
+      continue;
+    }
+    if (state.way === 'novalue') {
+      properties[property.name] = { NoValue: state.text };
+      continue;
+    }
+    properties[property.name] = nativeValue(property.type, state.text);
+  }
+  return properties;
+}
+
+/** The native form of what was typed, for the type the script inferred. */
+function nativeValue(type, text) {
+  if (type === 'bool') return text === 'true';
+  if (type === 'int' || type === 'double') {
+    const number = Number(text);
+    // A box holding something that is not a number is passed on as the
+    // text, so the reader sees the evaluator refuse it rather than the
+    // page quietly turning it into a zero.
+    return Number.isNaN(number) ? { String: text } : number;
+  }
+  return text;
 }
 
 // ------------------------------------------------------------------
@@ -357,32 +536,27 @@ function run() {
   output.textContent = '';
   status.textContent = '';
 
-  let properties;
-  try {
-    properties = readInputs(inputsBox.value);
-  } catch (error) {
-    const where = error.line ? ` The fault is on line ${error.line}.` : '';
-    reportError('Input properties',
-      `The input properties box could not be read, because ` +
-      `${error.message}.${where}`);
-    return;
-  }
-
+  // The script is read first, because the boxes on the right are the
+  // properties it names, so there is nothing to read until it validates.
   let validated;
   try {
     validated = validateText(scriptBox.value, { source: 'the tester' });
   } catch (error) {
+    buildFields(null);
     reportError('Validation',
       `The script could not be read, because ${error.message}.`);
     return;
   }
 
   if (validated.faults.length > 0) {
+    buildFields(null);
     reportFaults(validated.faults);
     return;
   }
 
   const model = validated.model;
+  buildFields(model);
+  const properties = readFields(model);
   section('Validation');
   const clean = el('div', 'c-eg-section');
   clean.appendChild(el('p', null, `The script is valid. ` +
@@ -413,44 +587,63 @@ function run() {
 }
 
 // ------------------------------------------------------------------
-// Loading the HumanConfidence script.
+// The list of scripts, and loading one.
+//
+// A browser cannot read a directory, so the names come from
+// scripts/index.json, which the Pages build writes from whatever is in
+// scripts/. Where that file is missing, which is what a plain local
+// server gives, the list holds only the built in example.
 // ------------------------------------------------------------------
 
-const HUMAN_CONFIDENCE_INPUTS = `# The values for one request. A property not listed here is absent.
-# Four forms are accepted, being the native value, { String: "..." },
-# { NoValue: "the reason there is no value" }, and a list of
-# { Value, Weight } where the highest weight is the one read.
-#
-# The set below passes every check, which reaches High. Delete any one
-# line to watch the whole property lose its value, because a script needs
-# every property it names.
+const OWN = 'Your own script';
 
-device.IsCrawler: false
-device.BrowserReleaseYear: 2026
-device.BrowserReleaseAge: 1
-ip.HumanProbability:
-  - { Value: 9, Weight: 0.7 }
-  - { Value: 3, Weight: 0.3 }
-`;
-
-async function loadHumanConfidence() {
-  status.textContent = 'Loading scripts/HumanConfidence.yaml';
+async function fillChoices() {
+  let names = [];
   try {
-    const response = await fetch('../scripts/HumanConfidence.yaml');
+    const response = await fetch('../scripts/index.json');
+    if (response.ok) names = await response.json();
+  } catch {
+    // A missing list is not a fault. The page still runs anything typed
+    // into the box, which is the part that matters.
+  }
+  for (const name of names) {
+    const option = el('option', null, name);
+    option.value = name;
+    choiceBox.appendChild(option);
+  }
+  const own = el('option', null, OWN);
+  own.value = OWN;
+  choiceBox.appendChild(own);
+  choiceBox.value = OWN;
+}
+
+async function loadChoice() {
+  const name = choiceBox.value;
+  if (name === OWN) {
+    scriptBox.value = EXAMPLE;
+    // A different script names different properties, so what was set for
+    // the last one no longer applies.
+    supplied.clear();
+    run();
+    return;
+  }
+  status.textContent = `Loading scripts/${name}.yaml`;
+  try {
+    const response = await fetch(`../scripts/${name}.yaml`);
     if (!response.ok) {
       throw new Error(`the server answered ${response.status} ` +
         `${response.statusText}`);
     }
     scriptBox.value = await response.text();
-    inputsBox.value = HUMAN_CONFIDENCE_INPUTS;
+    supplied.clear();
     // run() clears the status line, so the confirmation is set after it.
     run();
-    status.textContent = 'Loaded scripts/HumanConfidence.yaml';
+    status.textContent = `Loaded scripts/${name}.yaml`;
   } catch (error) {
     status.textContent = '';
     output.textContent = '';
     reportError('Load',
-      'scripts/HumanConfidence.yaml could not be fetched, because ' +
+      `scripts/${name}.yaml could not be fetched, because ` +
       `${error.message}. Serve the repository over HTTP rather than ` +
       'opening the page from a file path.');
   }
@@ -460,8 +653,8 @@ async function loadHumanConfidence() {
 // A worked example, so the page does something on first sight.
 // ------------------------------------------------------------------
 
-scriptBox.value = `# A short example showing the shape of a script. Press
-# "Load HumanConfidence" for the real one.
+const EXAMPLE = `# A short example showing the shape of a script. Choose a
+# script above for one 51Degrees ships.
 Format: 1
 Name: Example
 Version: 0.1.0
@@ -476,25 +669,27 @@ Output:
     - Name: "No"
       Description: The request is a declared crawler, or the browser is too old.
 Checks:
-  NotCrawler: { Property: device.IsCrawler, Eq: false }
-  Current:    { Property: device.BrowserReleaseAge, Lt: 24 }
+  IsCrawler: { Property: device.IsCrawler, Eq: true }
+  Current:   { Property: device.BrowserReleaseAge, Lt: 24 }
 Rules:
-  - When: { Property: device.IsCrawler, Eq: true }
+  - When: { Check: IsCrawler }
     Then: "No"
-  - When: { Failed: Checks, Eq: 0 }
+  - When: { Failed: [Current], Eq: 0 }
     Then: "Yes"
   - Else: "No"
 `;
 
-inputsBox.value = `# Both properties the script names are here, so the rules
-# run. Delete either line and the property has no value instead.
-device.IsCrawler: false
-device.BrowserReleaseAge: 6
-`;
+scriptBox.value = EXAMPLE;
 
 document.getElementById('run').addEventListener('click', run);
-document.getElementById('load').addEventListener('click', loadHumanConfidence);
+choiceBox.addEventListener('change', loadChoice);
 
+// The script box drives the boxes on the right, so a change there has to
+// run again. This is on change rather than on every keystroke, so the
+// report does not flicker while a script is being typed.
+scriptBox.addEventListener('change', run);
+
+await fillChoices();
 run();
 </script>
 </body>
