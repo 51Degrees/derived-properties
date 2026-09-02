@@ -3,7 +3,7 @@
 # Returns High, Medium or Low for the confidence that the request came from
 # a device being used by a human who is viewing the page.
 #
-# THIS SCRIPT IS A DRAFT AT VERSION 0.3.0. The thresholds below have not
+# THIS SCRIPT IS A DRAFT AT VERSION 0.4.0. The thresholds below have not
 # been reviewed by the 51Degrees Senior Data Operators, which is the one
 # thing holding it below 1.0.0.
 #
@@ -47,7 +47,7 @@
 #
 # The source properties, and what each one is
 # -------------------------------------------
-# Seven properties, all read from the 51Degrees property metadata and
+# Eight properties, all read from the 51Degrees property metadata and
 # checked against a production data file. Naming a property makes it
 # necessary, so the script names no others.
 #
@@ -70,7 +70,14 @@
 #                             the risk recorded at the bottom.
 #   ip.HumanProbability       Int, mandatory, default -1. A 0 to 10 scale
 #                             where -1 means the address has not been
-#                             rated.
+#                             rated. The production data carries only
+#                             -1, 0, 1, 2, 5, 7 and 10.
+#   ip.ConnectionType         String, mandatory, default Unknown. The
+#                             production data carries Broadband,
+#                             Cellular, Hosting & Anonymous and Unknown,
+#                             and nothing else. Being a string, Unknown
+#                             reads perfectly well, so naming this
+#                             property costs no request its value.
 #
 # Read only once the 51Degrees JavaScript has run.
 #
@@ -100,14 +107,15 @@
 #   HasWebDriver  The browser advertises a web driver.
 #   IsHeadless    The browser advertises no visible window.
 #
-# Three checks are counted, because each is a signal that a human may be
+# Four checks are counted, because each is a signal that a human may be
 # there and none of them settles the question alone.
 #
-#   IsVisible               The window was in view.
-#   BrowserIsCurrent        The browser is recent enough to be in use.
-#   AddressNotAgainstHuman  The address is not evidence against a human.
+#   IsVisible                The window was in view.
+#   BrowserIsCurrent         The browser is recent enough to be in use.
+#   AddressNotAgainstHuman   The address is not evidence against a human.
+#   ConnectionCarriesPeople  The connection is one people browse on.
 #
-# No failed check is High, one failed check is Medium, and two or three
+# No failed check is High, one failed check is Medium, and two or more
 # failed checks is Low.
 #
 # The thresholds, and what each rests on
@@ -146,6 +154,27 @@
 # The guard is written Lt: 0 rather than Eq: -1 so that any negative
 # value the data may later use for the same meaning is caught by it.
 #
+# ConnectionCarriesPeople, and the one place it disagrees with itself
+# ------------------------------------------------------------------
+# A connection people browse on is Broadband or Cellular. The check names
+# those two rather than excluding the others, so a value the data gains
+# later fails the check until somebody has looked at it, which is the
+# safer way round for a signal about automation.
+#
+# THE VALUES ARE WRITTEN AS THE DATA CARRIES THEM, NOT AS THE PROPERTY
+# DESCRIPTION SPELLS THEM. The published description reads "Returns
+# either Broadband, Cellular, or Hosting and Anonymous", with the word
+# and, whilst the data carries "Hosting & Anonymous" with an ampersand. A
+# script trusting the description would never have matched that value.
+# The value set here was read from a production data file.
+#
+# Unknown fails this check, on the instruction that a connection which is
+# not cellular or residential is a problem. That is worth a reviewer's
+# attention, because it disagrees with how the script treats an unrated
+# HumanProbability three paragraphs above, where not knowing is
+# deliberately not counted against the request. Both properties say "no
+# information about this address" and this script now treats one as
+# neutral and the other as a failure. One of the two should change.
 # One risk that is not settled
 # ----------------------------
 # BrowserReleaseAge is not a mandatory property, so it may be absent
@@ -163,7 +192,7 @@
 
 Format: 1
 Name: HumanConfidence
-Version: 0.3.0
+Version: 0.4.0
 Output:
   Name: HumanConfidence
   Description: The confidence that the request came from a device being used by a human who is viewing the page. Returns one of High, Medium, or Low. The property has no value until the 51Degrees JavaScript has run, because whether the browser window was in view cannot be known from the request alone.
@@ -194,6 +223,9 @@ Checks:
     Any:
       - { Property: ip.HumanProbability, Ge: 7 }
       - { Property: ip.HumanProbability, Lt: 0 }
+  ConnectionCarriesPeople:
+    Property: ip.ConnectionType
+    In: ["Broadband", "Cellular"]
 Rules:
   - When: { Check: IsCrawler }
     Then: Low
@@ -202,11 +234,11 @@ Rules:
   - When: { Check: IsHeadless }
     Then: Low
   - When:
-      Failed: [IsVisible, BrowserIsCurrent, AddressNotAgainstHuman]
+      Failed: [IsVisible, BrowserIsCurrent, AddressNotAgainstHuman, ConnectionCarriesPeople]
       Eq: 0
     Then: High
   - When:
-      Failed: [IsVisible, BrowserIsCurrent, AddressNotAgainstHuman]
+      Failed: [IsVisible, BrowserIsCurrent, AddressNotAgainstHuman, ConnectionCarriesPeople]
       Le: 1
     Then: Medium
   - Else: Low

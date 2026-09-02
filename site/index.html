@@ -325,8 +325,14 @@ function fieldRow(property) {
     box.placeholder = state.way === 'novalue'
       ? 'the reason there is no value'
       : placeholderFor(property.type);
-    box.addEventListener('input', () => { state.text = box.value; });
-    box.addEventListener('change', run);
+    // On input rather than on change, so the answer follows each
+    // keystroke. Running again is safe whilst typing because buildFields
+    // rebuilds only when the set of properties changes, which typing a
+    // value never does, so the caret stays where it is.
+    box.addEventListener('input', () => {
+      state.text = box.value;
+      run();
+    });
     valueCell.appendChild(box);
   };
 
@@ -724,10 +730,11 @@ scriptBox.value = EXAMPLE;
 document.getElementById('run').addEventListener('click', run);
 choiceBox.addEventListener('change', loadChoice);
 
-// The script box drives the boxes on the right, so a change there has to
-// run again. This is on change rather than on every keystroke, so the
-// report does not flicker while a script is being typed.
-scriptBox.addEventListener('change', run);
+// The script box drives the boxes on the right, so typing in it has to
+// run again. On input rather than on change, so a reader sees the script
+// stop and start validating as they edit rather than only when they
+// click away from it.
+scriptBox.addEventListener('input', run);
 
 await fillChoices();
 run();

@@ -6,13 +6,13 @@
 # rather than the native type, which is how a value read from a data file
 # or from a cloud response usually arrives.
 #
-# The script names seven source properties and every one of them is
+# The script names eight source properties and every one of them is
 # necessary, because a property is either present or it is not. Where one
 # is absent the whole property has no value and the message names every
 # property that could not be read, which is what Expect: { Missing: [...] }
 # below asserts.
 #
-# Two of the seven, device.IsVisible and device.HasWebDriver, only carry a
+# Two of the eight, device.IsVisible and device.HasWebDriver, only carry a
 # value once the 51Degrees JavaScript has run. The last case in this file
 # is the first request of a session, where neither has run yet, and it is
 # the case a reader should look at first.
@@ -33,6 +33,7 @@ Cases:
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
     Expect: { Value: High }
 
   # The same request with every value in its string form, which must be
@@ -46,6 +47,7 @@ Cases:
       device.BrowserReleaseYear: { String: "2026" }
       device.BrowserReleaseAge: { String: "1" }
       ip.HumanProbability: { String: "9" }
+      ip.ConnectionType: { String: "Broadband" }
     Expect: { Value: High }
 
   # A value that arrives as a list of weighted values takes the one with
@@ -61,6 +63,7 @@ Cases:
       ip.HumanProbability:
         - { Value: 2, Weight: 1 }
         - { Value: 9, Weight: 9 }
+      ip.ConnectionType: Broadband
     Expect: { Value: High }
 
   # Low. A declared crawler is Low on its own. Every counted check passes
@@ -75,6 +78,7 @@ Cases:
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
     Expect: { Value: Low }
 
   # Low. A browser advertising a web driver is under automation, which is
@@ -88,6 +92,7 @@ Cases:
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
     Expect: { Value: Low }
 
   # Low. A browser advertising no visible window, again decisive with
@@ -101,6 +106,7 @@ Cases:
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
     Expect: { Value: Low }
 
   # Medium. One counted check failed, being IsVisible, because the page
@@ -114,6 +120,7 @@ Cases:
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
     Expect: { Value: Medium }
 
   # Medium. One counted check failed, being BrowserIsCurrent, because the
@@ -127,6 +134,7 @@ Cases:
       device.BrowserReleaseYear: 2019
       device.BrowserReleaseAge: 84
       ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
     Expect: { Value: Medium }
 
   # An unrated IP address does not count against the request. The data
@@ -143,6 +151,7 @@ Cases:
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
       ip.HumanProbability: -1
+      ip.ConnectionType: Cellular
     Expect: { Value: High }
 
   # The same guard must not swallow a rated low address. 2 is inside the
@@ -158,6 +167,7 @@ Cases:
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 2
+      ip.ConnectionType: Broadband
     Expect: { Value: Medium }
 
   # 7 is the published line for high confidence, so it must pass. This
@@ -172,6 +182,7 @@ Cases:
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 7
+      ip.ConnectionType: Broadband
     Expect: { Value: High }
 
   # The Else, Low. Two counted checks failed, being BrowserIsCurrent and
@@ -185,6 +196,7 @@ Cases:
       device.BrowserReleaseYear: 2019
       device.BrowserReleaseAge: 84
       ip.HumanProbability: 2
+      ip.ConnectionType: Broadband
     Expect: { Value: Low }
 
   # Three counted checks failed, which is the Else again and the worst a
@@ -198,6 +210,7 @@ Cases:
       device.BrowserReleaseYear: 2019
       device.BrowserReleaseAge: 84
       ip.HumanProbability: 2
+      ip.ConnectionType: Broadband
     Expect: { Value: Low }
 
   # No value, one property absent. The device element is in the pipeline
@@ -211,6 +224,7 @@ Cases:
       device.IsVisible: true
       device.BrowserReleaseYear: 2026
       ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
     Expect: { Missing: [ device.BrowserReleaseAge ] }
 
   # No value, a whole element absent. HumanProbability is the only
@@ -224,7 +238,10 @@ Cases:
       device.IsVisible: true
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
-    Expect: { Missing: [ ip.HumanProbability ] }
+    Expect:
+      Missing:
+        - ip.HumanProbability
+        - ip.ConnectionType
 
   # No value, an unmatched browser. BrowserReleaseYear carries the string
   # Unknown, which is never read as zero, so the property is absent and
@@ -238,6 +255,7 @@ Cases:
       device.BrowserReleaseYear: { String: "Unknown" }
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
     Expect: { Missing: [ device.BrowserReleaseYear ] }
 
   # Values that mean "no value" are never coerced. N/A is not false, the
@@ -262,6 +280,7 @@ Cases:
         - device.BrowserReleaseYear
         - device.BrowserReleaseAge
         - ip.HumanProbability
+        - ip.ConnectionType
 
   # Nothing at all arrived, which is the pipeline built without either
   # source engine.
@@ -276,6 +295,7 @@ Cases:
         - device.BrowserReleaseYear
         - device.BrowserReleaseAge
         - ip.HumanProbability
+        - ip.ConnectionType
 
   # The format fixes int at a signed 32 bit whole number, so a value
   # outside that range cannot be read and the property is absent. This
@@ -290,6 +310,7 @@ Cases:
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
       ip.HumanProbability: { String: "3000000000" }
+      ip.ConnectionType: Broadband
     Expect: { Missing: [ ip.HumanProbability ] }
 
   # The first request of a session, which is the case to read first. The
@@ -307,7 +328,71 @@ Cases:
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
     Expect:
       Missing:
         - device.HasWebDriver
         - device.IsVisible
+
+  # Medium. One counted check failed, being ConnectionCarriesPeople,
+  # because the address is on a hosting or anonymising connection. The
+  # value is written with an ampersand because that is what the data
+  # carries, whilst the published description of the property spells it
+  # with the word and. A script following the description would never
+  # match this case, which is why it is here.
+  - Name: one failed check, a hosting connection
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: false
+      device.IsHeadless: false
+      device.IsVisible: true
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      ip.HumanProbability: 9
+      ip.ConnectionType: Hosting & Anonymous
+    Expect: { Value: Medium }
+
+  # Cellular passes, being the other connection people browse on.
+  - Name: a cellular connection passes
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: false
+      device.IsHeadless: false
+      device.IsVisible: true
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      ip.HumanProbability: 9
+      ip.ConnectionType: Cellular
+    Expect: { Value: High }
+
+  # Unknown fails the check rather than being read as neutral. This is
+  # the one place the script disagrees with itself, because an unrated
+  # HumanProbability of -1 is deliberately not counted against a request
+  # whilst an unknown connection is. Both mean the same thing about the
+  # address. A reviewer should settle which way round is right, and this
+  # case is what will change when they do.
+  - Name: an unknown connection fails the check
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: false
+      device.IsHeadless: false
+      device.IsVisible: true
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      ip.HumanProbability: 9
+      ip.ConnectionType: Unknown
+    Expect: { Value: Medium }
+
+  # Two counted checks failed, being the connection and the address, so
+  # a hosting connection on a low rated address is Low.
+  - Name: a hosting connection on a low rated address
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: false
+      device.IsHeadless: false
+      device.IsVisible: true
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      ip.HumanProbability: 1
+      ip.ConnectionType: Hosting & Anonymous
+    Expect: { Value: Low }
