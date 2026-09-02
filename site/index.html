@@ -83,7 +83,7 @@
     <div>
       <label class="b-label" for="script">Script</label>
       <p>YAML or JSON. Both give the same model.</p>
-      <textarea id="script" class="b-input c-eg-value" rows="22"
+      <textarea id="script" class="c-eg-editor" rows="22"
         spellcheck="false" autocapitalize="off"
         autocomplete="off" autocorrect="off"></textarea>
     </div>
@@ -92,7 +92,7 @@
       <p>YAML mapping from
         <span class="b-text--code">element.Property</span> to a value. A
         property left out is absent.</p>
-      <textarea id="inputs" class="b-input c-eg-value" rows="22"
+      <textarea id="inputs" class="c-eg-editor" rows="22"
         spellcheck="false" autocapitalize="off"
         autocomplete="off" autocorrect="off"></textarea>
     </div>
@@ -160,13 +160,17 @@ function table(headings, rows) {
 }
 
 /**
- * A badge for one of two states, readable without colour. `good` picks
- * the tick and the green, and `word` is what the badge says.
+ * A badge for one of two states. The emoji carries the meaning on its
+ * own, as it does in the other 51Degrees example pages, so the word is
+ * not repeated beside it in the same cell. The word becomes the title,
+ * which keeps it for anyone reading with a screen reader or hovering.
  */
 function stateBadge(good, word) {
-  const badge = el('span', `c-eg-status c-eg-status--${good ? 'pass' : 'fail'}`);
-  badge.appendChild(el('span', null, good ? '✔' : '✘'));
-  badge.appendChild(document.createTextNode(word));
+  const badge = el(
+    'span',
+    `c-eg-status c-eg-status--${good ? 'pass' : 'fail'}`,
+    good ? '✅' : '❌');
+  badge.title = word;
   return badge;
 }
 
