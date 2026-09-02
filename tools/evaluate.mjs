@@ -25,9 +25,10 @@
  */
 export const USUAL_CAUSES =
   'Usual causes are the element that supplies the property not being in ' +
-  'the pipeline, the property being excluded in the engine configuration, ' +
-  'the property not being included in the resource key, or JavaScript that ' +
-  'populates the property not having run yet.';
+  'the pipeline, or being added after this element rather than before it, ' +
+  'the property being excluded in the engine configuration, the property ' +
+  'not being included in the resource key, or JavaScript that populates ' +
+  'the property not having run yet.';
 
 /**
  * Runs one script for one request.

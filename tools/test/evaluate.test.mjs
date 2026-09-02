@@ -327,10 +327,11 @@ test('the missing message names every absent property, not only the first', () =
     "for 'IsVisible': property not present on this request). " +
     "'device.WebDriver' (element 'device' has no value for 'WebDriver': " +
     'property not present on this request). Usual causes are the element ' +
-    'that supplies the property not being in the pipeline, the property ' +
-    'being excluded in the engine configuration, the property not being ' +
-    'included in the resource key, or JavaScript that populates the ' +
-    'property not having run yet.');
+    'that supplies the property not being in the pipeline, or being added ' +
+    'after this element rather than before it, the property being excluded ' +
+    'in the engine configuration, the property not being included in the ' +
+    'resource key, or JavaScript that populates the property not having ' +
+    'run yet.');
 });
 
 test('the missing message is singular for one property', () => {

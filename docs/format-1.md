@@ -464,10 +464,11 @@ properties were not available. 'device.BrowserReleaseYear' (element
 'device' has no value for 'BrowserReleaseYear': property not present on
 this request). 'ip.HumanProbability' (element 'ip' has no value for
 'HumanProbability': property not present on this request). Usual causes
-are the element that supplies the property not being in the pipeline, the
-property being excluded in the engine configuration, the property not
-being included in the resource key, or JavaScript that populates the
-property not having run yet.
+are the element that supplies the property not being in the pipeline, or
+being added after this element rather than before it, the property being
+excluded in the engine configuration, the property not being included in
+the resource key, or JavaScript that populates the property not having
+run yet.
 ```
 
 The pieces are fixed. The message opens with the words
@@ -481,9 +482,19 @@ single spaces. The closing sentence is the constant `USUAL_CAUSES`
 exported from `tools/evaluate.mjs`, quoted here in full.
 
 > Usual causes are the element that supplies the property not being in
-> the pipeline, the property being excluded in the engine configuration,
-> the property not being included in the resource key, or JavaScript that
-> populates the property not having run yet.
+> the pipeline, or being added after this element rather than before it,
+> the property being excluded in the engine configuration, the property
+> not being included in the resource key, or JavaScript that populates
+> the property not having run yet.
+
+The second of those causes is worth reading twice, because it is the one
+an implementation cannot catch when the pipeline is built. Where an
+element runs is not judged at build, since a pipeline holding elements
+that run in parallel reports them in an order that does not say what ran
+before what. An element added after a source it reads therefore builds,
+and produces no value on every request, with this message naming the
+property. An implementation should log that once rather than on every
+request, because it will otherwise repeat for the life of the process.
 
 The reason inside the brackets takes one of four shapes, from `readSlot`
 in `tools/evaluate.mjs`, where `<key>` is the element data key and
