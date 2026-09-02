@@ -48,27 +48,39 @@
 <body>
 <div class="c-eg-page c-eg-page--wide">
 
-  <p><img src="51degrees-logo.png" width="360" height="67"
-    alt="51Degrees"></p>
+  <!--
+    The logo sits beside the title rather than above it, because a logo
+    on a line of its own costs every reader its height before anything
+    they came for, and the page has width to spare and none to waste.
+  -->
+  <div class="c-eg-masthead">
+    <img src="51degrees-logo.png" width="270" height="50" alt="51Degrees">
+    <div class="c-eg-masthead__words">
+      <h2 class="c-eg-page__title">Derived property tester</h2>
+      <p class="c-eg-page__lead">Choose a script, set the properties one
+        request carries, and the page reports whether the script is valid,
+        what value it produces, and why that value was reached.</p>
+    </div>
+  </div>
 
-  <h2 class="c-eg-page__title">Derived property tester</h2>
+  <div class="c-eg-intro">
+    <p>The page loads the reference tools of this repository without
+      altering them, being <span class="b-text--code">tools/parse.mjs</span>,
+      <span class="b-text--code">tools/validate.mjs</span>,
+      <span class="b-text--code">tools/evaluate.mjs</span> and
+      <span class="b-text--code">tools/canonical.mjs</span>, so the answer
+      here is the answer the conformance cases give.</p>
 
-  <p class="c-eg-page__lead">Paste a derived property script and the
-    property values for one request, press Run, and the page reports
-    whether the script is valid, what value it produces, and why that
-    value was reached.</p>
+    <p><strong>Everything runs in your browser.</strong> The script and the
+      values you paste are never sent anywhere. The only things fetched over
+      the network are the js-yaml library and the files of this
+      repository.</p>
 
-  <p>The page loads the reference tools of this repository without
-    altering them, being <span class="b-text--code">tools/parse.mjs</span>,
-    <span class="b-text--code">tools/validate.mjs</span>,
-    <span class="b-text--code">tools/evaluate.mjs</span> and
-    <span class="b-text--code">tools/canonical.mjs</span>, so the answer
-    here is the answer the conformance cases give.</p>
-
-  <p><strong>Everything runs in your browser.</strong> The script and the
-    values you paste are never sent anywhere. The only things fetched over
-    the network are the js-yaml library and the files of this
-    repository.</p>
+    <p>Edit either box and the answer follows as you type. Choosing an
+      answer below the properties fills them in with a request that
+      produces it, and pressing the same answer again shows another of
+      the requests that reach it.</p>
+  </div>
 
   <div class="c-eg-section">
     <div class="c-eg-controls">
@@ -417,11 +429,101 @@ function nextRequest(model, key, wanted) {
   // anything else to offer.
   if (bucket.kept.length > 1 && sameAsScreen(model, texts)) texts = take();
 
+  return {
+    settings: arrivals(model, texts, wanted),
+    found: bucket.found,
+    complete: built.complete
+  };
+}
+
+/**
+ * How each value arrives, chosen at random between a value of the type
+ * the script inferred and the text form of the same value.
+ *
+ * This is not part of the walk, because a value and its text form are
+ * read as the same value and so cannot change the answer, and walking it
+ * would multiply the space by two for every property the script names
+ * without finding a single new answer. Choosing it here shows a reader
+ * that a property arriving as text is converted, which is where a real
+ * pipeline goes wrong, at the cost of one run of the script.
+ */
+function arrivals(model, texts, wanted) {
   const settings = new Map();
+  model.properties.forEach((property, i) => {
+    settings.set(property.name, {
+      way: Math.random() < 0.4 ? 'text' : 'value',
+      text: texts[i]
+    });
+  });
+
+  // Proved rather than assumed. A text form that cannot be read as the
+  // type the script inferred would lose the value altogether, so where
+  // the answer is not the one asked for every value is put back as a
+  // value of its own type, which the walk has already proved. A wanted
+  // of null asks only that the request still has a value, which is what
+  // the button that then takes one away needs.
+  const value = evaluate(model, requestProperties(model, settings)).value;
+  if (wanted === null ? value !== undefined : value === wanted) return settings;
   model.properties.forEach((property, i) => {
     settings.set(property.name, { way: 'value', text: texts[i] });
   });
-  return { settings, found: bucket.found, complete: built.complete };
+  return settings;
+}
+
+// The reasons offered for a property that arrived carrying no value.
+// A property with no value is not an error, so each one is an ordinary
+// thing that happens on a request rather than a fault.
+const REASONS = [
+  'the 51Degrees JavaScript has not run yet',
+  'the device was not matched',
+  'the address was not in the data',
+  'the property is not in this data file'
+];
+
+// The bucket of requests that produce no value at all. A symbol rather
+// than a name, because a script is free to declare a value called
+// anything at all and this is not one of its values.
+const NOTHING = Symbol('no value');
+
+/**
+ * A request where a property the script names carries nothing readable,
+ * which is the one rule of the format: the derived property then has no
+ * value at all, whatever every other property says.
+ *
+ * Built from a request that does produce a value rather than walked,
+ * because once one property cannot be read the answer is settled and
+ * walking the rest would be walking the same answer many times over.
+ */
+function missingRequest(model, key) {
+  const built = poolFor(model, key);
+  const buckets = [...built.byValue.values()];
+  if (buckets.length === 0 || model.properties.length === 0) return null;
+
+  const bucket = buckets[Math.floor(Math.random() * buckets.length)];
+  const texts = bucket.kept[Math.floor(Math.random() * bucket.kept.length)];
+
+  // Each property in turn rather than at random, so pressing the button
+  // repeatedly walks the properties a script names and shows that any
+  // one of them missing is enough on its own.
+  let cursor = cursors.get(NOTHING);
+  if (cursor === undefined || cursor.at >= cursor.order.length) {
+    cursor = { order: shuffled(model.properties.length), at: 0 };
+    cursors.set(NOTHING, cursor);
+  }
+  const lost = cursor.order[cursor.at++];
+
+  const settings = arrivals(model, texts, null);
+  const property = model.properties[lost];
+  settings.set(property.name, Math.random() < 0.5
+    ? { way: 'absent', text: texts[lost] }
+    : {
+      way: 'novalue',
+      text: REASONS[Math.floor(Math.random() * REASONS.length)]
+    });
+
+  const result = evaluate(model, requestProperties(model, settings));
+  if (result.value !== undefined) return null;
+  return { settings, lost: property.name, way: settings.get(property.name).way };
 }
 
 /** Whether a request is the one the boxes already hold. */
@@ -508,59 +610,101 @@ function buildFields(model) {
 }
 
 /**
- * One button per value the script can return, which fills the boxes in
- * with a request that produces it.
+ * One button per value the script can return, plus one for no value at
+ * all, each of which fills the boxes in with a request that produces it.
  *
- * Only for a script whose output lists its values, and only where those
+ * A value gets a button only where the output lists its values and those
  * values are text. A number has no fixed set to offer, and asking for
- * one arbitrary number out of a range would teach a reader nothing.
+ * one arbitrary number out of a range would teach a reader nothing. No
+ * value is offered for every script, because every script has it.
  */
 function wantedPills(model) {
   const wrap = el('div', 'c-eg-section');
   const values = model.output.Values;
-  if (!Array.isArray(values) || values.length === 0 ||
-    String(model.output.ValueType).toLowerCase() !== 'string') {
-    return wrap;
-  }
+  const listed = Array.isArray(values) && values.length > 0 &&
+    String(model.output.ValueType).toLowerCase() === 'string';
 
-  wrap.appendChild(el('p', null,
-    'Or choose the answer and let the page fill the boxes in with a ' +
-    'request that produces it. Press the same one again for another ' +
-    'way of reaching it, because most answers are reached by several ' +
-    'quite different requests.'));
+  wrap.appendChild(el('p', null, listed
+    ? 'Or choose the answer and let the page fill the boxes in with a ' +
+      'request that produces it. Press the same one again for another ' +
+      'way of reaching it, because most answers are reached by several ' +
+      'quite different requests, and by properties arriving in ' +
+      'different ways.'
+    : 'The output does not list its values, so there is no answer to ' +
+      'ask for. No value can still be shown, being what happens when a ' +
+      'property the script names cannot be read.'));
 
   const row = el('div', 'c-eg-controls');
-  for (const value of values) {
-    const button = el('button', 'b-btn b-btn--secondary', String(value.Name));
-    button.type = 'button';
-    button.title = value.Description ?? '';
-    button.addEventListener('click', () => {
-      // The script in the box is read again rather than the one these
-      // buttons were built for, because editing a rule leaves the
-      // buttons standing whilst changing what produces what.
-      if (current === null) return;
-      const answer = nextRequest(current, scriptBox.value, value.Name);
-      if (answer === null) {
-        status.textContent =
-          `No request the page tried produces ${value.Name}.`;
-        return;
-      }
-      for (const [name, state] of answer.settings) supplied.set(name, state);
-      // The boxes hold the old values, so they are thrown away and built
-      // again rather than each one being reached into.
-      builtFor = null;
-      run();
-      status.textContent = answer.complete
-        ? `${answer.found} of the requests the page can build produce ` +
-          `${value.Name}, and the boxes hold one of them. Press ` +
-          `${value.Name} again for another.`
-        : 'The boxes hold one of the requests that produce ' +
-          `${value.Name}. Press ${value.Name} again for another.`;
-    });
-    row.appendChild(button);
+  if (listed) {
+    for (const value of values) row.appendChild(valueButton(model, value));
   }
+  row.appendChild(missingButton());
   wrap.appendChild(row);
   return wrap;
+}
+
+/** Fills the boxes in with a request that produces one value. */
+function valueButton(model, value) {
+  const button = el('button', 'b-btn b-btn--secondary', String(value.Name));
+  button.type = 'button';
+  button.title = value.Description ?? '';
+  button.addEventListener('click', () => {
+    // The script in the box is read again rather than the one these
+    // buttons were built for, because editing a rule leaves the buttons
+    // standing whilst changing what produces what.
+    if (current === null) return;
+    const answer = nextRequest(current, scriptBox.value, value.Name);
+    if (answer === null) {
+      status.textContent =
+        `No request the page tried produces ${value.Name}.`;
+      return;
+    }
+    fill(answer.settings);
+    status.textContent = answer.complete
+      ? `${answer.found} combinations of these properties produce ` +
+        `${value.Name}. The boxes hold one of them, with each property ` +
+        `arriving either as a value or as text. Press ${value.Name} ` +
+        'again for another.'
+      : 'The boxes hold one of the requests that produce ' +
+        `${value.Name}. Press ${value.Name} again for another.`;
+  });
+  return button;
+}
+
+/**
+ * Takes one property away, which is the one rule of the format shown
+ * rather than described.
+ */
+function missingButton() {
+  const button = el('button', 'b-btn b-btn--secondary', 'No value');
+  button.type = 'button';
+  button.title = 'A property the script names cannot be read, so the ' +
+    'derived property has no value at all.';
+  button.addEventListener('click', () => {
+    if (current === null) return;
+    const answer = missingRequest(current, scriptBox.value);
+    if (answer === null) {
+      status.textContent = 'The page could not build a request with no ' +
+        'value, which should not happen.';
+      return;
+    }
+    fill(answer.settings);
+    status.textContent = answer.way === 'absent'
+      ? `${answer.lost} is absent on this request, so there is no value. ` +
+        'Press No value again to take a different property away.'
+      : `${answer.lost} arrived carrying no value, so there is none here ` +
+        'either. Press No value again to take a different property away.';
+  });
+  return button;
+}
+
+/** Puts a request into the boxes and runs it. */
+function fill(settings) {
+  for (const [name, state] of settings) supplied.set(name, state);
+  // The boxes hold the old values, so they are thrown away and built
+  // again rather than each one being reached into.
+  builtFor = null;
+  run();
 }
 
 /** One row, being the property, how it arrives, and what it holds. */
@@ -661,15 +805,20 @@ function placeholderFor(type) {
   return 'text';
 }
 
+/** Turns the boxes into the properties the evaluator reads. */
+function readFields(model) {
+  return requestProperties(model, supplied);
+}
+
 /**
- * Turns the boxes into the properties the evaluator reads. A property
+ * Turns a request into the properties the evaluator reads. A property
  * set to Absent is left out entirely, which is how a property that no
  * element supplied arrives.
  */
-function readFields(model) {
+function requestProperties(model, request) {
   const properties = {};
   for (const property of model.properties) {
-    const state = supplied.get(property.name);
+    const state = request.get(property.name);
     if (state === undefined || state.way === 'absent') continue;
     if (state.way === 'text') {
       properties[property.name] = { String: state.text };
