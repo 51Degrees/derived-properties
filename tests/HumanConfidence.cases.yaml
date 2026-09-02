@@ -6,22 +6,30 @@
 # rather than the native type, which is how a value read from a data file
 # or from a cloud response usually arrives.
 #
-# The script names four source properties and every one of them is
+# The script names seven source properties and every one of them is
 # necessary, because a property is either present or it is not. Where one
 # is absent the whole property has no value and the message names every
 # property that could not be read, which is what Expect: { Missing: [...] }
 # below asserts.
 #
-# Between them these cases reach all four rules and all three output
-# values, which `node tools/run-cases.mjs` checks and fails on.
+# Two of the seven, device.IsVisible and device.HasWebDriver, only carry a
+# value once the 51Degrees JavaScript has run. The last case in this file
+# is the first request of a session, where neither has run yet, and it is
+# the case a reader should look at first.
+#
+# Between them these cases reach every rule and all three output values,
+# which `node tools/run-cases.mjs` checks and fails on.
 
 Script: HumanConfidence
 Cases:
 
-  # Rule 1, High. Every check passed.
+  # High. All three counted checks passed and no decisive check fired.
   - Name: every check passes
     Properties:
       device.IsCrawler: false
+      device.HasWebDriver: false
+      device.IsHeadless: false
+      device.IsVisible: true
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
@@ -32,6 +40,9 @@ Cases:
   - Name: every check passes, every value in its string form
     Properties:
       device.IsCrawler: { String: "False" }
+      device.HasWebDriver: { String: "False" }
+      device.IsHeadless: { String: "False" }
+      device.IsVisible: { String: "True" }
       device.BrowserReleaseYear: { String: "2026" }
       device.BrowserReleaseAge: { String: "1" }
       ip.HumanProbability: { String: "9" }
@@ -42,6 +53,9 @@ Cases:
   - Name: a weighted list takes the value with the highest weight
     Properties:
       device.IsCrawler: false
+      device.HasWebDriver: false
+      device.IsHeadless: false
+      device.IsVisible: true
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
       ip.HumanProbability:
@@ -49,23 +63,67 @@ Cases:
         - { Value: 9, Weight: 9 }
     Expect: { Value: High }
 
-  # Rule 0, Low. A declared crawler is Low on its own, whatever else says.
-  # One check has failed here, being NotCrawler, so the Medium rule would
-  # match if the rules were read in any other order. This case is what
-  # proves first match wins.
+  # Low. A declared crawler is Low on its own. Every counted check passes
+  # here, so the High rule would match if the rules were read in any other
+  # order. This case is what proves first match wins.
   - Name: a declared crawler with every other check passing
     Properties:
       device.IsCrawler: true
+      device.HasWebDriver: false
+      device.IsHeadless: false
+      device.IsVisible: true
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
     Expect: { Value: Low }
 
-  # Rule 2, Medium. One check failed, being Current, because the browser
-  # was released seven years ago.
+  # Low. A browser advertising a web driver is under automation, which is
+  # decisive whatever else says. Every counted check passes.
+  - Name: a browser advertising a web driver
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: true
+      device.IsHeadless: false
+      device.IsVisible: true
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      ip.HumanProbability: 9
+    Expect: { Value: Low }
+
+  # Low. A browser advertising no visible window, again decisive with
+  # every counted check passing.
+  - Name: a headless browser
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: false
+      device.IsHeadless: true
+      device.IsVisible: true
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      ip.HumanProbability: 9
+    Expect: { Value: Low }
+
+  # Medium. One counted check failed, being IsVisible, because the page
+  # was in a background tab when the JavaScript ran.
+  - Name: one failed check, the window was not in view
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: false
+      device.IsHeadless: false
+      device.IsVisible: false
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      ip.HumanProbability: 9
+    Expect: { Value: Medium }
+
+  # Medium. One counted check failed, being BrowserIsCurrent, because the
+  # browser was released seven years ago.
   - Name: one failed check, an old browser
     Properties:
       device.IsCrawler: false
+      device.HasWebDriver: false
+      device.IsHeadless: false
+      device.IsVisible: true
       device.BrowserReleaseYear: 2019
       device.BrowserReleaseAge: 84
       ip.HumanProbability: 9
@@ -73,13 +131,15 @@ Cases:
 
   # An unrated IP address does not count against the request. The data
   # supplies -1 for an address it has not rated, which is a real value
-  # rather than an absent property, so the HumanOrUnrated check is written
+  # rather than an absent property, so AddressNotAgainstHuman is written
   # with an Any that treats -1 as "the address is not evidence against a
-  # human". Every check passes here and the answer is High, where a plain
-  # Ge 8 would have failed one check and capped this request at Medium.
+  # human". Every counted check passes here and the answer is High.
   - Name: an unrated IP address does not count against the request
     Properties:
       device.IsCrawler: false
+      device.HasWebDriver: false
+      device.IsHeadless: false
+      device.IsVisible: true
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
       ip.HumanProbability: -1
@@ -88,31 +148,67 @@ Cases:
   # The same guard must not swallow a rated low address. 2 is inside the
   # published 0 to 3 low band, so both members of the Any are false and the
   # check fails, which is the case that proves the guard is a guard rather
-  # than a way of never failing the check.
-  - Name: a rated low IP address still fails its check
+  # than a way of ignoring the property.
+  - Name: a rated low address still fails the check
     Properties:
       device.IsCrawler: false
+      device.HasWebDriver: false
+      device.IsHeadless: false
+      device.IsVisible: true
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 2
     Expect: { Value: Medium }
 
-  # Rule 3, the Else, Low. Two checks failed, being Current and
-  # HumanOrUnrated.
+  # 7 is the published line for high confidence, so it must pass. This
+  # case pins the threshold to the published band rather than to a
+  # stricter line nobody recorded a reason for.
+  - Name: the published high confidence line of 7 passes
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: false
+      device.IsHeadless: false
+      device.IsVisible: true
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      ip.HumanProbability: 7
+    Expect: { Value: High }
+
+  # The Else, Low. Two counted checks failed, being BrowserIsCurrent and
+  # AddressNotAgainstHuman.
   - Name: two failed checks, an old browser on a hosting IP address
     Properties:
       device.IsCrawler: false
+      device.HasWebDriver: false
+      device.IsHeadless: false
+      device.IsVisible: true
+      device.BrowserReleaseYear: 2019
+      device.BrowserReleaseAge: 84
+      ip.HumanProbability: 2
+    Expect: { Value: Low }
+
+  # Three counted checks failed, which is the Else again and the worst a
+  # request can do without a decisive check firing.
+  - Name: every counted check failed
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: false
+      device.IsHeadless: false
+      device.IsVisible: false
       device.BrowserReleaseYear: 2019
       device.BrowserReleaseAge: 84
       ip.HumanProbability: 2
     Expect: { Value: Low }
 
   # No value, one property absent. The device element is in the pipeline
-  # and answered for the other two properties, so this is a property that
-  # was excluded from the engine configuration or from the resource key.
+  # and answered for the others, so this is a property that was excluded
+  # from the engine configuration or from the resource key.
   - Name: one absent property leaves no value
     Properties:
       device.IsCrawler: false
+      device.HasWebDriver: false
+      device.IsHeadless: false
+      device.IsVisible: true
       device.BrowserReleaseYear: 2026
       ip.HumanProbability: 9
     Expect: { Missing: [ device.BrowserReleaseAge ] }
@@ -123,17 +219,22 @@ Cases:
   - Name: the ip element is not in the pipeline
     Properties:
       device.IsCrawler: false
+      device.HasWebDriver: false
+      device.IsHeadless: false
+      device.IsVisible: true
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
     Expect: { Missing: [ ip.HumanProbability ] }
 
   # No value, an unmatched browser. BrowserReleaseYear carries the string
   # Unknown, which is never read as zero, so the property is absent and
-  # the whole derived property is absent with it. This is the second
-  # behaviour change named in the header of the script.
+  # the whole derived property is absent with it.
   - Name: an unmatched browser leaves no value
     Properties:
       device.IsCrawler: false
+      device.HasWebDriver: false
+      device.IsHeadless: false
+      device.IsVisible: true
       device.BrowserReleaseYear: { String: "Unknown" }
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
@@ -141,17 +242,23 @@ Cases:
 
   # Values that mean "no value" are never coerced. N/A is not false, the
   # string Unknown is not zero and an empty string is not false, so every
-  # property here is absent and the message must name all four rather than
-  # only the first.
+  # property here is absent and the message must name all of them rather
+  # than only the first.
   - Name: N/A, Unknown and empty strings are absent rather than false
     Properties:
       device.IsCrawler: { String: "N/A" }
+      device.HasWebDriver: { String: "Unknown" }
+      device.IsHeadless: { String: "N/A" }
+      device.IsVisible: { String: "Unknown" }
       device.BrowserReleaseYear: { String: "Unknown" }
       device.BrowserReleaseAge: { String: "N/A" }
       ip.HumanProbability: { String: "" }
     Expect:
       Missing:
         - device.IsCrawler
+        - device.HasWebDriver
+        - device.IsHeadless
+        - device.IsVisible
         - device.BrowserReleaseYear
         - device.BrowserReleaseAge
         - ip.HumanProbability
@@ -163,6 +270,9 @@ Cases:
     Expect:
       Missing:
         - device.IsCrawler
+        - device.HasWebDriver
+        - device.IsHeadless
+        - device.IsVisible
         - device.BrowserReleaseYear
         - device.BrowserReleaseAge
         - ip.HumanProbability
@@ -170,12 +280,34 @@ Cases:
   # The format fixes int at a signed 32 bit whole number, so a value
   # outside that range cannot be read and the property is absent. This
   # case is here because it is the one place the width changes an answer
-  # rather than only the wording of a message. A language carrying wider
-  # whole numbers would return Medium here.
+  # rather than only the wording of a message.
   - Name: a whole number too large for an int cannot be read
     Properties:
       device.IsCrawler: false
+      device.HasWebDriver: false
+      device.IsHeadless: false
+      device.IsVisible: true
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
       ip.HumanProbability: { String: "3000000000" }
     Expect: { Missing: [ ip.HumanProbability ] }
+
+  # The first request of a session, which is the case to read first. The
+  # 51Degrees JavaScript has not run, so device.IsVisible and
+  # device.HasWebDriver both carry Unknown, neither can be read as the
+  # Bool they declare, and the property has no value. Every server side
+  # property is present and would have given High. A pipeline that never
+  # runs the JavaScript looks exactly like this on every request.
+  - Name: the first request of a session, before the JavaScript has run
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "Unknown" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "Unknown" }
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      ip.HumanProbability: 9
+    Expect:
+      Missing:
+        - device.HasWebDriver
+        - device.IsVisible

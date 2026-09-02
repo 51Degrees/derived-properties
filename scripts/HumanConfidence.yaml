@@ -3,9 +3,33 @@
 # Returns High, Medium or Low for the confidence that the request came from
 # a device being used by a human who is viewing the page.
 #
-# THIS SCRIPT IS A DRAFT AT VERSION 0.2.0. The thresholds below have not
+# THIS SCRIPT IS A DRAFT AT VERSION 0.3.0. The thresholds below have not
 # been reviewed by the 51Degrees Senior Data Operators, which is the one
-# thing holding it below 1.0.0. See the bottom of this comment.
+# thing holding it below 1.0.0.
+#
+# THIS PROPERTY HAS NO VALUE UNTIL THE 51DEGREES JAVASCRIPT HAS RUN
+# ------------------------------------------------------------------
+# Read this before using the property, because it is the single most
+# surprising thing about it.
+#
+# The script names device.IsVisible and device.HasWebDriver. Both are
+# populated by the 51Degrees JavaScript on the client, and server side
+# both carry the value Unknown, which cannot be read as the Bool they
+# declare. A property a script names is necessary, so on any request
+# where the JavaScript has not run this property has no value at all and
+# the message names those two properties.
+#
+# In practice that means the first request of a session has no value and
+# the second and later ones do. A pipeline that never runs the 51Degrees
+# JavaScript, such as a server to server integration, never gets a value.
+#
+# That is a deliberate choice rather than an oversight. The property
+# claims to say whether a human is viewing the page, and whether a window
+# was actually in view cannot be known from the request alone, so a band
+# computed without it would be answering a weaker question than the one
+# the property name asks. A customer who wants an answer on the first
+# request wants a different property, computed from the server side
+# properties alone.
 #
 # The Output block below IS the definition of this property
 # --------------------------------------------------------
@@ -14,138 +38,135 @@
 # nothing to keep it in step with and a change to Output is a change to
 # the property itself.
 #
-# Two things about it, so they are not rediscovered.
+# IsMandatory is false, because this property genuinely does not always
+# have a value, as the section above says. DefaultValue is absent, since
+# nothing reads it while a request is processed, because every script
+# ends in an Else and so always chooses from its own rules. There is no
+# Unknown value, because a script either chooses a band or has no value,
+# and no request reaches a third state.
 #
-#   IsMandatory   False. A mandatory property always has a value, and this
-#                 one does not, because an unmatched browser leaves
-#                 BrowserReleaseYear unreadable and this property with no
-#                 value at all. See behaviour change 2 below.
-#   DefaultValue  Absent. Nothing reads DefaultValue while a request is
-#                 processed, because every script ends in an Else and so
-#                 always chooses a value from its own rules.
+# The source properties, and what each one is
+# -------------------------------------------
+# Seven properties, all read from the 51Degrees property metadata and
+# checked against a production data file. Naming a property makes it
+# necessary, so the script names no others.
 #
-# There is no Unknown value. It would have stood for nothing having been
-# evaluated, and no request reaches that state, because a script whose
-# source properties are all present always chooses a band and a script
-# missing one has no value at all.
+# Read on every request, server side.
 #
-# Where each source property comes from
-# -------------------------------------
-# The four element data keys and property names were read from the
-# 51Degrees property metadata. These four are the properties that are in
-# the data today. Naming a property makes it necessary, because a
-# property is either present or it is not, so the script names no others.
-#
-#   device.IsCrawler          Bool, mandatory, default True. The data
-#                             carries True and False and nothing else, so
-#                             it always reads.
+#   device.IsCrawler          Bool, mandatory. The data carries True and
+#                             False and nothing else, so it always reads.
+#                             Its default is True, so traffic that cannot
+#                             be matched counts as a crawler.
+#   device.IsHeadless         Bool, mandatory, default False. The data
+#                             carries True and False only, so it always
+#                             reads. Says the browser advertises itself as
+#                             running without a visible window.
 #   device.BrowserReleaseYear Int, mandatory, but the data carries N/A and
 #                             Unknown as well as years, and neither reads
-#                             as an Int. See the second behaviour change
-#                             below.
-#   device.BrowserReleaseAge  Int, in months since the release year and
+#                             as an Int, so an unmatched browser leaves
+#                             this property with no value.
+#   device.BrowserReleaseAge  Int, months since the release year and
 #                             month, default 0. NOT mandatory, which is
 #                             the risk recorded at the bottom.
-#   ip.HumanProbability       Int on a 0 to 10 scale, -1 meaning unknown,
-#                             mandatory, default -1. The element data key
-#                             is `ip`, which is what the 51Degrees IP
-#                             intelligence engines publish under.
+#   ip.HumanProbability       Int, mandatory, default -1. A 0 to 10 scale
+#                             where -1 means the address has not been
+#                             rated.
 #
-# Further properties have been proposed for this script and are NOT named
-# here, because they are not in the 51Degrees data yet. Naming one of them
-# now would make this property have no value on every request until that
-# property shipped, so each one joins the script, with a version bump,
-# once it is in the data.
+# Read only once the 51Degrees JavaScript has run.
 #
-# The thresholds, and what each one rests on
-# ------------------------------------------
-# Every number below is a draft and none has been reviewed. Where a value
-# is taken from a published property description that is said here, and
-# where it is not, it is marked as chosen and awaiting review, so that a
-# reader can tell the two apart.
+#   device.IsVisible          Bool, mandatory, but the only value in the
+#                             data is Unknown, which cannot be read as a
+#                             Bool. Says whether the browser window was in
+#                             view at the moment the JavaScript ran.
+#   device.HasWebDriver       Bool, mandatory, and again Unknown only in
+#                             the data. Says whether the browser
+#                             advertises a web driver, as a browser under
+#                             automation is required to do. It reports
+#                             what the browser advertises and not what an
+#                             automated client may be concealing.
 #
-#   A crawler is Low on its own, whatever else is true.
-#   No failed check is High, one failed check is Medium, and two or more
-#   is Low.
+# How the rules are shaped
+# ------------------------
+# Every condition is a named check and no rule names a property directly.
+# That way one fact is written once, and whether a condition is counted
+# by an aggregate is decided by naming it in the group rather than by
+# which syntax it happens to use.
 #
-# BrowserReleaseAge is a whole number of months. Its published
+# Three checks are decisive on their own and are deliberately left out of
+# the counted group, because each is proof of automation rather than one
+# signal among several.
+#
+#   IsCrawler     The request says it is a crawler.
+#   HasWebDriver  The browser advertises a web driver.
+#   IsHeadless    The browser advertises no visible window.
+#
+# Three checks are counted, because each is a signal that a human may be
+# there and none of them settles the question alone.
+#
+#   IsVisible               The window was in view.
+#   BrowserIsCurrent        The browser is recent enough to be in use.
+#   AddressNotAgainstHuman  The address is not evidence against a human.
+#
+# No failed check is High, one failed check is Medium, and two or three
+# failed checks is Low.
+#
+# The thresholds, and what each rests on
+# --------------------------------------
+# Every number is a draft. Where one comes from a published property
+# description that description is quoted, and where it does not the
+# number is marked as chosen and awaiting review.
+#
+# BrowserReleaseAge is a whole number of months, because its published
 # description is "Indicates the age in months of the browser since the
-# BrowserReleaseYear and BrowserReleaseMonth", so the unit is the
-# property's own. The figure of 2 is chosen and awaiting review, and it
-# is tight, since a browser two months past release is current by most
-# readings.
+# BrowserReleaseYear and BrowserReleaseMonth". The figure of 24 months is
+# chosen and awaiting review.
 #
-# Ge: 8 on HumanProbability is chosen and awaiting review, and it does
-# not match the published bands. The property's description reads
-# "A 0-10 value where; 0-3: Low confidence the user is human, 4-6: Medium
-# confidence, 7-10: High confidence. A -1 value indicates that the
-# probability is unknown." So the published line for high confidence is
-# 7, and this script uses 8, which is stricter than published with
-# nothing recording why. Either the script moves to 7 or the reason for 8
-# is written down.
+# Ge: 7 on HumanProbability follows the published bands. The property's
+# description reads "A 0-10 value where; 0-3: Low confidence the user is
+# human, 4-6: Medium confidence, 7-10: High confidence. A -1 value
+# indicates that the probability is unknown." So 7 is the published line
+# for high confidence and the script uses it rather than a stricter line
+# nobody has recorded a reason for.
 #
-# Why HumanOrUnrated is written with an Any
-# -----------------------------------------
+# Why AddressNotAgainstHuman is written with an Any
+# ------------------------------------------------
 # HumanProbability is mandatory with a default of -1, and -1 means the
 # address has not been rated. An unrated address therefore arrives as a
-# real value rather than as an absent property, so a plain { Ge: 8 }
+# real value rather than as an absent property, so a plain { Ge: 7 }
 # reads -1 as false and counts a failed check against a request that
-# carries no evidence either way. On these rules that is the difference
-# between High and Medium for a real person whose address happens to be
-# unrated.
+# carries no evidence either way.
 #
 # The Any makes the check true where the address says human and also
-# where the address says nothing, which reads as "the address is not
-# evidence against a human". The consequence is a choice rather than a
-# fact: an unrated address then counts the same as a high one, so a
-# request with a current browser that is not a crawler can reach High on
-# an unrated address. The format has no third state, so a check is either
-# true or false, and the alternative was to keep costing real people a
-# failed check for something they did not do.
+# where the address says nothing. The consequence is a choice rather than
+# a fact: an unrated address then counts the same as a rated one, so a
+# request can reach High on an unrated address. The format has no third
+# state, so a check is either true or false, and the alternative was to
+# keep costing real people a failed check for something they did not do.
 #
 # The guard is written Lt: 0 rather than Eq: -1 so that any negative
-# value the data may later use for the same meaning is caught by the same
-# rule.
-#
-# Two behaviour changes
-# ---------------------
-# 1. The first request of a session is answered normally. None of the
-#    four properties comes from the 51Degrees JavaScript, so nothing
-#    waits on the client. A first request scored as failed rather than as
-#    unanswered is avoided by which properties this script names rather
-#    than by any rule.
-# 2. An unmatched browser leaves this property with no value at all.
-#    BrowserReleaseYear carries N/A or Unknown where the browser was not
-#    matched, and neither can be read as the Int the property declares,
-#    so the property is absent and this one is absent with it. The
-#    customer gets a message naming device.BrowserReleaseYear instead of
-#    a confidence band.
+# value the data may later use for the same meaning is caught by it.
 #
 # One risk that is not settled
 # ----------------------------
 # BrowserReleaseAge is not a mandatory property, so it may be absent
 # rather than defaulted, and naming it therefore risks this property
 # having no value on requests where the browser matched but the age was
-# not populated. Whether that happens in practice needs checking against
-# the data before this script goes to 1.0.0.
+# not populated. That needs checking against the data before 1.0.0.
 #
 # What holds this script below 1.0.0
 # ----------------------------------
 # The 51Degrees Senior Data Operators have not reviewed the thresholds or
-# the value descriptions, and two of the numbers above are marked as
-# awaiting that review. Being below 1.0.0 is what makes this script a
-# draft, and a draft may be rewritten freely, so the version and removal
-# checks do not apply to it.
-#
-# The value sets of the further properties named above need settling when
-# each one ships and joins this script. Nothing here waits on them today.
+# the value descriptions, and one number above is marked as awaiting that
+# review. Being below 1.0.0 is what makes this script a draft, and a
+# draft may be rewritten freely, so the version and removal checks do not
+# apply to it.
 
 Format: 1
 Name: HumanConfidence
-Version: 0.2.0
+Version: 0.3.0
 Output:
   Name: HumanConfidence
-  Description: The confidence that the request came from a device being used by a human who is viewing the page. Returns one of High, Medium, or Low.
+  Description: The confidence that the request came from a device being used by a human who is viewing the page. Returns one of High, Medium, or Low. The property has no value until the 51Degrees JavaScript has run, because whether the browser window was in view cannot be known from the request alone.
   ValueType: string
   IsList: false
   IsMandatory: false
@@ -161,20 +182,31 @@ Output:
     - Name: Low
       Description: Almost certainly no human is directly involved in viewing the page content.
 Checks:
-  NotCrawler:  { Property: device.IsCrawler,  Eq: false }
-  Current:
+  IsCrawler:    { Property: device.IsCrawler,    Eq: true }
+  HasWebDriver: { Property: device.HasWebDriver, Eq: true }
+  IsHeadless:   { Property: device.IsHeadless,   Eq: true }
+  IsVisible:    { Property: device.IsVisible,    Eq: true }
+  BrowserIsCurrent:
     All:
       - { Property: device.BrowserReleaseYear, Gt: 0 }
-      - { Property: device.BrowserReleaseAge,  Lt: 2 }
-  HumanOrUnrated:
+      - { Property: device.BrowserReleaseAge,  Lt: 24 }
+  AddressNotAgainstHuman:
     Any:
-      - { Property: ip.HumanProbability, Ge: 8 }
+      - { Property: ip.HumanProbability, Ge: 7 }
       - { Property: ip.HumanProbability, Lt: 0 }
 Rules:
-  - When: { Property: device.IsCrawler, Eq: true }
+  - When: { Check: IsCrawler }
     Then: Low
-  - When: { Failed: Checks, Eq: 0 }
+  - When: { Check: HasWebDriver }
+    Then: Low
+  - When: { Check: IsHeadless }
+    Then: Low
+  - When:
+      Failed: [IsVisible, BrowserIsCurrent, AddressNotAgainstHuman]
+      Eq: 0
     Then: High
-  - When: { Failed: Checks, Le: 1 }
+  - When:
+      Failed: [IsVisible, BrowserIsCurrent, AddressNotAgainstHuman]
+      Le: 1
     Then: Medium
   - Else: Low
