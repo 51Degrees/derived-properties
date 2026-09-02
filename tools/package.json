@@ -1,0 +1,19 @@
+{
+  "name": "derived-properties-tools",
+  "version": "1.0.0",
+  "description": "Reference parser, validator and evaluator for derived property scripts.",
+  "type": "module",
+  "license": "EUPL-1.2",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs && node run-cases.mjs .."
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "ajv": "^8.20.0"
+  }
+}

@@ -1,0 +1,76 @@
+name: Pages
+
+# Publishes the tester page to GitHub Pages on every push to main.
+#
+# site/index.html loads ../tools/*.mjs as ES modules and fetches
+# ../scripts/HumanConfidence.yaml, so site/, tools/ and scripts/ have to stay
+# siblings in the published artifact. The build step below copies the three
+# folders into one staging folder that keeps those names and that position,
+# and adds a redirect at the root so that the address of the site opens the
+# tester page.
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time. A run already in flight is allowed to finish
+# rather than being cancelled part way through a deployment.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build the site artifact
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/configure-pages@v5
+
+      - name: Stage site, tools and scripts as siblings
+        run: |
+          set -euo pipefail
+          rm -rf _site
+          mkdir -p _site
+          cp -r site tools scripts _site/
+          # node_modules is a local install and is not part of the page. The
+          # page loads js-yaml from a CDN instead.
+          rm -rf _site/tools/node_modules
+          cat > _site/index.html <<'HTML'
+          <!doctype html>
+          <html lang="en">
+            <head>
+              <meta charset="utf-8">
+              <title>51Degrees derived property script tester</title>
+              <meta http-equiv="refresh" content="0; url=site/index.html">
+              <link rel="canonical" href="site/index.html">
+            </head>
+            <body>
+              <p><a href="site/index.html">Open the derived property script
+              tester</a>.</p>
+            </body>
+          </html>
+          HTML
+          ls -R _site | head -40
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

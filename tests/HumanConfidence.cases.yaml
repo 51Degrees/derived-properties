@@ -1,0 +1,181 @@
+# Conformance cases for scripts/HumanConfidence.yaml.
+#
+# Every language implementation runs these cases and must give the same
+# answer for every one. A property that is not listed is absent. A property
+# written as { String: "..." } arrives as the string form of the value
+# rather than the native type, which is how a value read from a data file
+# or from a cloud response usually arrives.
+#
+# The script names four source properties and every one of them is
+# necessary, because a property is either present or it is not. Where one
+# is absent the whole property has no value and the message names every
+# property that could not be read, which is what Expect: { Missing: [...] }
+# below asserts.
+#
+# Between them these cases reach all four rules and all three output
+# values, which `node tools/run-cases.mjs` checks and fails on.
+
+Script: HumanConfidence
+Cases:
+
+  # Rule 1, High. Every check passed.
+  - Name: every check passes
+    Properties:
+      device.IsCrawler: false
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      ip.HumanProbability: 9
+    Expect: { Value: High }
+
+  # The same request with every value in its string form, which must be
+  # read exactly as the native form was.
+  - Name: every check passes, every value in its string form
+    Properties:
+      device.IsCrawler: { String: "False" }
+      device.BrowserReleaseYear: { String: "2026" }
+      device.BrowserReleaseAge: { String: "1" }
+      ip.HumanProbability: { String: "9" }
+    Expect: { Value: High }
+
+  # A value that arrives as a list of weighted values takes the one with
+  # the highest weight.
+  - Name: a weighted list takes the value with the highest weight
+    Properties:
+      device.IsCrawler: false
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      ip.HumanProbability:
+        - { Value: 2, Weight: 1 }
+        - { Value: 9, Weight: 9 }
+    Expect: { Value: High }
+
+  # Rule 0, Low. A declared crawler is Low on its own, whatever else says.
+  # One check has failed here, being NotCrawler, so the Medium rule would
+  # match if the rules were read in any other order. This case is what
+  # proves first match wins.
+  - Name: a declared crawler with every other check passing
+    Properties:
+      device.IsCrawler: true
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      ip.HumanProbability: 9
+    Expect: { Value: Low }
+
+  # Rule 2, Medium. One check failed, being Current, because the browser
+  # was released seven years ago.
+  - Name: one failed check, an old browser
+    Properties:
+      device.IsCrawler: false
+      device.BrowserReleaseYear: 2019
+      device.BrowserReleaseAge: 84
+      ip.HumanProbability: 9
+    Expect: { Value: Medium }
+
+  # An unrated IP address does not count against the request. The data
+  # supplies -1 for an address it has not rated, which is a real value
+  # rather than an absent property, so the HumanOrUnrated check is written
+  # with an Any that treats -1 as "the address is not evidence against a
+  # human". Every check passes here and the answer is High, where a plain
+  # Ge 8 would have failed one check and capped this request at Medium.
+  - Name: an unrated IP address does not count against the request
+    Properties:
+      device.IsCrawler: false
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      ip.HumanProbability: -1
+    Expect: { Value: High }
+
+  # The same guard must not swallow a rated low address. 2 is inside the
+  # published 0 to 3 low band, so both members of the Any are false and the
+  # check fails, which is the case that proves the guard is a guard rather
+  # than a way of never failing the check.
+  - Name: a rated low IP address still fails its check
+    Properties:
+      device.IsCrawler: false
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      ip.HumanProbability: 2
+    Expect: { Value: Medium }
+
+  # Rule 3, the Else, Low. Two checks failed, being Current and
+  # HumanOrUnrated.
+  - Name: two failed checks, an old browser on a hosting IP address
+    Properties:
+      device.IsCrawler: false
+      device.BrowserReleaseYear: 2019
+      device.BrowserReleaseAge: 84
+      ip.HumanProbability: 2
+    Expect: { Value: Low }
+
+  # No value, one property absent. The device element is in the pipeline
+  # and answered for the other two properties, so this is a property that
+  # was excluded from the engine configuration or from the resource key.
+  - Name: one absent property leaves no value
+    Properties:
+      device.IsCrawler: false
+      device.BrowserReleaseYear: 2026
+      ip.HumanProbability: 9
+    Expect: { Missing: [ device.BrowserReleaseAge ] }
+
+  # No value, a whole element absent. HumanProbability is the only
+  # property this script takes from the ip element, so a pipeline built
+  # without the IP intelligence engine looks exactly like this.
+  - Name: the ip element is not in the pipeline
+    Properties:
+      device.IsCrawler: false
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+    Expect: { Missing: [ ip.HumanProbability ] }
+
+  # No value, an unmatched browser. BrowserReleaseYear carries the string
+  # Unknown, which is never read as zero, so the property is absent and
+  # the whole derived property is absent with it. This is the second
+  # behaviour change named in the header of the script.
+  - Name: an unmatched browser leaves no value
+    Properties:
+      device.IsCrawler: false
+      device.BrowserReleaseYear: { String: "Unknown" }
+      device.BrowserReleaseAge: 1
+      ip.HumanProbability: 9
+    Expect: { Missing: [ device.BrowserReleaseYear ] }
+
+  # Values that mean "no value" are never coerced. N/A is not false, the
+  # string Unknown is not zero and an empty string is not false, so every
+  # property here is absent and the message must name all four rather than
+  # only the first.
+  - Name: N/A, Unknown and empty strings are absent rather than false
+    Properties:
+      device.IsCrawler: { String: "N/A" }
+      device.BrowserReleaseYear: { String: "Unknown" }
+      device.BrowserReleaseAge: { String: "N/A" }
+      ip.HumanProbability: { String: "" }
+    Expect:
+      Missing:
+        - device.IsCrawler
+        - device.BrowserReleaseYear
+        - device.BrowserReleaseAge
+        - ip.HumanProbability
+
+  # Nothing at all arrived, which is the pipeline built without either
+  # source engine.
+  - Name: nothing available
+    Properties: {}
+    Expect:
+      Missing:
+        - device.IsCrawler
+        - device.BrowserReleaseYear
+        - device.BrowserReleaseAge
+        - ip.HumanProbability
+
+  # The format fixes int at a signed 32 bit whole number, so a value
+  # outside that range cannot be read and the property is absent. This
+  # case is here because it is the one place the width changes an answer
+  # rather than only the wording of a message. A language carrying wider
+  # whole numbers would return Medium here.
+  - Name: a whole number too large for an int cannot be read
+    Properties:
+      device.IsCrawler: false
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      ip.HumanProbability: { String: "3000000000" }
+    Expect: { Missing: [ ip.HumanProbability ] }

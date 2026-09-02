@@ -1,0 +1,273 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://51degrees.github.io/derived-properties/schema/format-1.schema.json",
+  "title": "Derived property script, format 1",
+  "description": "One script describes how one output property is computed from properties already in the flow data. See docs/format-1.md, which is the normative reference. This schema catches what a schema can, and tools/validate.mjs catches the rest, so a script that passes this schema is not yet known to be valid. The largest thing left to the validator is that the last rule must be an Else and no earlier rule may be one, because a JSON Schema has no way to say that an entry is the last one of an array of any length. This schema requires only that some rule is an Else.",
+  "type": "object",
+  "required": ["Format", "Name", "Version", "Output", "Rules"],
+  "additionalProperties": false,
+
+  "properties": {
+    "Format": {
+      "description": "The version of the script language. 1 is the only value this schema describes.",
+      "const": 1
+    },
+    "Name": {
+      "description": "What configuration selects the script by. The file name without its extension must equal it.",
+      "$ref": "#/$defs/identifier"
+    },
+    "Version": {
+      "description": "The author's semantic version. It is printed in the build log and plays no part in selection.",
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+    },
+    "Deprecated": {
+      "description": "A deprecated script still works and logs a warning at build.",
+      "type": "boolean"
+    },
+    "DeprecationNote": {
+      "description": "What to use instead. Required when Deprecated is true.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Output": { "$ref": "#/$defs/output" },
+    "Checks": {
+      "description": "Named conditions, so a rule can reuse one and an aggregate can count them.",
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/identifier" },
+      "additionalProperties": { "$ref": "#/$defs/condition" }
+    },
+    "Rules": {
+      "description": "Read in order, and the first rule whose When is true supplies the output. The last rule must be an Else, so that a script always chooses a value once its source properties have been read. A JSON Schema has no way to say that an entry is the last one of an array of any length, so this schema requires only that some rule is an Else, and tools/validate.mjs checks that the Else is the last rule and that no earlier rule is one.",
+      "type": "array",
+      "minItems": 1,
+      "contains": { "type": "object", "required": ["Else"] },
+      "items": { "$ref": "#/$defs/rule" }
+    }
+  },
+
+  "dependentRequired": {
+    "DeprecationNote": ["Deprecated"]
+  },
+
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9]*$"
+    },
+
+    "sourceProperty": {
+      "description": "A property already in the flow data, written as elementKey.PropertyName, for example device.IsCrawler.",
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9]*\\.[A-Za-z][A-Za-z0-9]*$"
+    },
+
+    "output": {
+      "description": "The property definition. The field names and meanings are those 51Degrees uses for the metadata of every property, and this block is the one definition of the property. Nothing else holds a second copy of it.",
+      "type": "object",
+      "required": ["Name", "Description", "ValueType", "IsList"],
+      "additionalProperties": false,
+      "properties": {
+        "Name": { "$ref": "#/$defs/identifier" },
+        "Description": { "type": "string", "minLength": 1 },
+        "ValueType": {
+          "description": "Format 1 handles the four scalar types. The other 51Degrees value types are faults.",
+          "type": "string",
+          "enum": ["string", "String", "bool", "Bool", "int", "Int",
+            "double", "Double"]
+        },
+        "StoredValueType": { "type": "string" },
+        "DefaultValue": {
+          "description": "The string form of the value recorded as the default for the property. It is carried through to the property metadata unchanged and nothing reads it while a request is being processed, because every script ends in an Else and so always chooses a value. It must still be one of the entries under Values where that list is given.",
+          "type": "string"
+        },
+        "IsList": {
+          "description": "Must be false. List outputs are deferred to a later format.",
+          "const": false
+        },
+        "IsMandatory": { "type": "boolean" },
+        "IsObsolete": { "type": "boolean" },
+        "Category": { "type": "string" },
+        "IsPopular": { "type": "boolean" },
+        "ExportValues": { "type": "boolean" },
+        "Url": { "type": "string" },
+        "DisplayOrder": { "type": "integer" },
+        "PropertyId": { "type": "integer" },
+        "VendorIds": { "type": "array", "items": { "type": "string" } },
+        "Dependencies": {
+          "description": "Computed by the validator as every source property the checks and rules name, when the script does not give it.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "Values": {
+          "description": "Only for string and int outputs. When given, every Then and Else must name one of them.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["Name"],
+            "additionalProperties": false,
+            "properties": {
+              "Name": { "type": ["string", "integer"] },
+              "Description": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+
+    "literal": {
+      "description": "A value to compare against. Null is not allowed, because it has no type and nothing to compare. Absence is not written in a script at all, since a source property that is absent leaves the whole derived property with no value before any rule runs.",
+      "type": ["string", "number", "boolean"]
+    },
+
+    "group": {
+      "description": "The word Checks, meaning every named check, or a list of check names.",
+      "oneOf": [
+        { "const": "Checks" },
+        {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/identifier" }
+        }
+      ]
+    },
+
+    "comparison": {
+      "description": "One Property key plus exactly one operator key.",
+      "type": "object",
+      "required": ["Property"],
+      "minProperties": 2,
+      "maxProperties": 2,
+      "additionalProperties": false,
+      "properties": {
+        "Property": { "$ref": "#/$defs/sourceProperty" },
+        "Eq": { "$ref": "#/$defs/literal" },
+        "Ne": { "$ref": "#/$defs/literal" },
+        "Gt": { "type": "number" },
+        "Ge": { "type": "number" },
+        "Lt": { "type": "number" },
+        "Le": { "type": "number" },
+        "In": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/literal" }
+        },
+        "NotIn": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/literal" }
+        },
+        "StartsWith": { "type": "string" },
+        "EndsWith": { "type": "string" },
+        "Contains": { "type": "string" }
+      }
+    },
+
+    "checkReference": {
+      "description": "Reuses a named check.",
+      "type": "object",
+      "required": ["Check"],
+      "additionalProperties": false,
+      "properties": {
+        "Check": { "$ref": "#/$defs/identifier" }
+      }
+    },
+
+    "aggregateCondition": {
+      "description": "One count over a group of checks, being how many of the group passed or failed, compared with a whole number. Every check is always evaluated, because the rules only run once every source property the script names has been read, so the two counts always add up to the size of the group.",
+      "type": "object",
+      "minProperties": 2,
+      "maxProperties": 2,
+      "additionalProperties": false,
+      "anyOf": [
+        { "required": ["Passed"] },
+        { "required": ["Failed"] }
+      ],
+      "properties": {
+        "Passed": { "$ref": "#/$defs/group" },
+        "Failed": { "$ref": "#/$defs/group" },
+        "Eq": { "$ref": "#/$defs/count" },
+        "Ne": { "$ref": "#/$defs/count" },
+        "Gt": { "$ref": "#/$defs/count" },
+        "Ge": { "$ref": "#/$defs/count" },
+        "Lt": { "$ref": "#/$defs/count" },
+        "Le": { "$ref": "#/$defs/count" }
+      }
+    },
+
+    "count": {
+      "description": "A whole number a count is compared with. A count is never compared with another count, because comparing one count against another is not something a script needs to do.",
+      "type": "integer"
+    },
+
+    "condition": {
+      "type": "object",
+      "oneOf": [
+        { "$ref": "#/$defs/comparison" },
+        { "$ref": "#/$defs/checkReference" },
+        { "$ref": "#/$defs/aggregateCondition" },
+        {
+          "type": "object",
+          "required": ["All"],
+          "additionalProperties": false,
+          "properties": {
+            "All": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/condition" }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["Any"],
+          "additionalProperties": false,
+          "properties": {
+            "Any": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/condition" }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["Not"],
+          "additionalProperties": false,
+          "properties": {
+            "Not": { "$ref": "#/$defs/condition" }
+          }
+        }
+      ]
+    },
+
+    "ruleValue": {
+      "description": "What a rule supplies, being a literal of the output's value type. An aggregate object was allowed here once and is not any more, because the one script that used it was removed with it.",
+      "$ref": "#/$defs/literal"
+    },
+
+    "rule": {
+      "type": "object",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["When", "Then"],
+          "additionalProperties": false,
+          "properties": {
+            "When": { "$ref": "#/$defs/condition" },
+            "Then": { "$ref": "#/$defs/ruleValue" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["Else"],
+          "additionalProperties": false,
+          "properties": {
+            "Else": { "$ref": "#/$defs/ruleValue" }
+          }
+        }
+      ]
+    }
+  }
+}

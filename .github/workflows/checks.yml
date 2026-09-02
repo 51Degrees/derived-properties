@@ -1,0 +1,94 @@
+name: Checks
+
+# Runs checks 1 to 6 of section 9 of the DerivedPropertyElement design on
+# every pull request and on every push to main. Check 7, the consumer test
+# against pipeline-dotnet, has a workflow of its own at
+# .github/workflows/consumer-tests.yml.
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Scripts, cases and metadata
+    runs-on: ubuntu-latest
+    steps:
+      # fetch-depth 0 gives the full history, which check-versions.mjs needs
+      # so that the base branch of a pull request can be read.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Node 22, the current long term support release. Node 20 is past
+      # its support date and GitHub warns on every run that its runners
+      # are dropping it.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # package-lock.json is in .gitignore, so there is no lock file to
+      # install from and `npm ci` would fail. Use `npm install` instead.
+      # The only runtime dependency is js-yaml and the only development
+      # dependency is ajv, both pinned by major version in package.json.
+      - name: Install the tool dependencies
+        working-directory: tools
+        run: npm install
+
+      # The glob is left unquoted so that the shell expands it into the
+      # file names before node sees them. Quoting it hands the glob to
+      # node instead, and node only expands a test glob itself from
+      # version 22, so a quoted glob failed here on Node 20 with "Could
+      # not find" while passing on a developer machine running Node 24.
+      # Shell expansion works on every version and cannot drift again.
+      #
+      # These unit tests also cover check 1 of the design in full, because
+      # tools/test/schema.test.mjs validates every file in scripts/ against
+      # schema/format-1.schema.json with Ajv, and tools/test/validate.test.mjs
+      # covers the rules the schema cannot express. There is therefore no
+      # separate schema step below.
+      - name: Unit tests for the tools, including the schema (check 1)
+        working-directory: tools
+        run: node --test test/*.test.mjs
+
+      # Covers checks 1, 2, 3 and 4. Every script validates, names are unique
+      # and equal their file names, every script has a cases file, every rule
+      # and every listed output value is reached by at least one case, every
+      # case passes, and every script under tests/invalid is rejected with the
+      # expected path and message fragment.
+      - name: Scripts, cases and coverage (checks 1 to 4)
+        run: node tools/run-cases.mjs
+
+      # Checks 5 and 6. A change to a script's Output, Checks or Rules has
+      # to come with a change to that script's Version, and no script may
+      # be removed or renamed. Both need the base branch, so this
+      # step only runs on a pull request. tools/check-versions.mjs is written
+      # by step 4 of run book 01.
+      - name: Version bumps and no removals (checks 5 and 6)
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "$BASE_REF"
+          node tools/check-versions.mjs "origin/$BASE_REF"
+
+  # Check 7, the consumer test, lives in its own workflow at
+  # .github/workflows/consumer-tests.yml, because it checks out a second
+  # repository and takes far longer than the checks above. A row is added
+  # there for each language package as it ships.
+  #
+  # There was an eighth check here. It compared each
+  # script's Output block against a second copy of the same definition kept
+  # elsewhere, and it needed a token for a repository this one does not
+  # name. A script's Output block is the one definition of its property, so
+  # there is nothing to compare, and the check, its tool and its token are
+  # all gone. Nothing in this repository reaches outside it.

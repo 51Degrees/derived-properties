@@ -1,0 +1,4 @@
+# The scripts, cases and tools are read by implementations in several
+# languages and on several platforms, so everything in this repository is
+# stored with line feed endings.
+* text=auto eol=lf
