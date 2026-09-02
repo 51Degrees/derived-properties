@@ -433,32 +433,36 @@ function reportFaults(faults) {
  */
 function reportResult(model, result) {
   const card = el('div', result.value === undefined
-    ? 'c-eg-alert'
-    : 'c-eg-section');
-  card.appendChild(el('h2', null, 'Result'));
+    ? 'c-eg-result c-eg-result--none'
+    : 'c-eg-result');
+  card.appendChild(el('span', 'c-eg-result__label', model.output.Name));
 
   if (result.value !== undefined) {
-    card.appendChild(el('p', null,
-      `${model.output.Name} has the value`));
-    card.appendChild(el('div', 'c-eg-value', showValue(result.value)));
-    card.appendChild(el('p', null,
+    card.appendChild(
+      el('p', 'c-eg-result__value', showValue(result.value)));
+    card.appendChild(el('p', 'c-eg-result__note',
       `Read as ${typeWord(result.value)}, where the output declares ` +
       `${model.output.ValueType}.`));
-  } else {
-    const missing = result.missing ?? [];
-    card.appendChild(el('p', null, missing.length === 1
-      ? `${model.output.Name} has no value, because 1 source property ` +
-        'was not available.'
-      : `${model.output.Name} has no value, because ${missing.length} ` +
-        'source properties were not available.'));
-    const list = el('ul', null);
-    for (const name of missing) {
-      list.appendChild(el('li', 'b-text--code', name));
-    }
-    card.appendChild(list);
-    card.appendChild(el('p', null,
-      'The message the property carries is below.'));
+    resultBox.appendChild(card);
+    return;
   }
+
+  const missing = result.missing ?? [];
+  card.appendChild(el('p', 'c-eg-result__value', 'No value'));
+  const note = el('p', 'c-eg-result__note');
+  note.textContent = missing.length === 1
+    ? '1 source property was not available, being '
+    : `${missing.length} source properties were not available, being `;
+  missing.forEach((name, index) => {
+    if (index > 0) {
+      note.appendChild(document.createTextNode(
+        index === missing.length - 1 ? ' and ' : ', '));
+    }
+    note.appendChild(el('span', 'b-text--code', name));
+  });
+  note.appendChild(document.createTextNode(
+    '. The message the property carries is below.'));
+  card.appendChild(note);
   resultBox.appendChild(card);
 }
 
@@ -575,13 +579,15 @@ function run() {
     // The headline goes above the boxes with every other answer, so a
     // reader editing a script is told it stopped validating without
     // having to scroll to find out.
-    const card = el('div', 'c-eg-alert');
-    card.appendChild(el('h2', null, 'Result'));
-    card.appendChild(el('p', null, validated.faults.length === 1
-      ? 'There is no value, because the script has 1 fault. It is listed ' +
-        'below.'
-      : `There is no value, because the script has ` +
-        `${validated.faults.length} faults. They are listed below.`));
+    const card = el('div', 'c-eg-result c-eg-result--none');
+    card.appendChild(el('span', 'c-eg-result__label', 'Result'));
+    card.appendChild(el('p', 'c-eg-result__value', 'No value'));
+    card.appendChild(el('p', 'c-eg-result__note',
+      validated.faults.length === 1
+        ? 'The script has 1 fault, so there is no model to run. It is ' +
+          'listed below.'
+        : `The script has ${validated.faults.length} faults, so there ` +
+          'is no model to run. They are listed below.'));
     resultBox.appendChild(card);
     reportFaults(validated.faults);
     return;
