@@ -79,6 +79,13 @@
     </div>
   </div>
 
+  <!--
+    The answer sits above the two boxes rather than below them, so that
+    changing an input and seeing what it did takes no scrolling. Why it
+    came out that way is the whole of the page below.
+  -->
+  <div id="result"></div>
+
   <div class="c-eg-columns">
     <div>
       <label class="b-label" for="script">Script</label>
@@ -114,6 +121,7 @@ import { canonical } from '../tools/canonical.mjs';
 const scriptBox = document.getElementById('script');
 const fieldsBox = document.getElementById('fields');
 const choiceBox = document.getElementById('choice');
+const resultBox = document.getElementById('result');
 const output = document.getElementById('output');
 const status = document.getElementById('status');
 
@@ -413,39 +421,52 @@ function reportFaults(faults) {
   details.appendChild(el('summary', null,
     'The message an implementation raises'));
   const body = el('div', null);
-  body.appendChild(el('pre', null, faultsMessage(faults)));
+  body.appendChild(el('pre', 'c-eg-pre c-eg-pre--wrap', faultsMessage(faults)));
   details.appendChild(body);
   output.appendChild(details);
 }
 
+/**
+ * The answer, written into the block above the two boxes so that a
+ * reader changing an input sees what it did without scrolling. Why the
+ * answer came out that way is reported below, by reportTrace.
+ */
 function reportResult(model, result) {
-  section('Result');
-  const card = el('div', 'c-eg-section');
+  const card = el('div', result.value === undefined
+    ? 'c-eg-alert'
+    : 'c-eg-section');
+  card.appendChild(el('h2', null, 'Result'));
 
   if (result.value !== undefined) {
     card.appendChild(el('p', null,
       `${model.output.Name} has the value`));
     card.appendChild(el('div', 'c-eg-value', showValue(result.value)));
-    const kind = el('p', null);
-    kind.textContent = `Read as ${typeWord(result.value)}, ` +
-      `where the output declares ${model.output.ValueType}.`;
-    card.appendChild(kind);
+    card.appendChild(el('p', null,
+      `Read as ${typeWord(result.value)}, where the output declares ` +
+      `${model.output.ValueType}.`));
   } else {
-    card.classList.add('bad');
     const missing = result.missing ?? [];
     card.appendChild(el('p', null, missing.length === 1
-      ? 'There is no value because 1 source property was not available.'
-      : `There is no value because ${missing.length} source ` +
-        'properties were not available.'));
+      ? `${model.output.Name} has no value, because 1 source property ` +
+        'was not available.'
+      : `${model.output.Name} has no value, because ${missing.length} ` +
+        'source properties were not available.'));
     const list = el('ul', null);
     for (const name of missing) {
       list.appendChild(el('li', 'b-text--code', name));
     }
     card.appendChild(list);
-    card.appendChild(el('h3', null, 'The message the property carries'));
-    card.appendChild(el('pre', null, result.message));
+    card.appendChild(el('p', null,
+      'The message the property carries is below.'));
   }
-  output.appendChild(card);
+  resultBox.appendChild(card);
+}
+
+/** The message a caller reading the property would meet. */
+function reportMessage(result) {
+  if (result.value !== undefined) return;
+  section('The message the property carries');
+  output.appendChild(el('pre', 'c-eg-pre c-eg-pre--wrap', result.message));
 }
 
 function reportTrace(model, result, canonicalModel) {
@@ -499,7 +520,7 @@ function reportTrace(model, result, canonicalModel) {
     card.appendChild(el('p', null,
       `Rules[${trace.matchedRule}] matched, on its ${trace.matchedBy} ` +
       'clause.'));
-    card.appendChild(el('pre', null, JSON.stringify(rule, null, 2)));
+    card.appendChild(el('pre', 'c-eg-pre', JSON.stringify(rule, null, 2)));
   } else {
     card.appendChild(el('p', null, 'No rule was reached. Every source ' +
       'property is read before anything is evaluated, and one of them was ' +
@@ -516,7 +537,7 @@ function reportCanonical(model) {
   body.appendChild(el('p', null, 'This is what a language package ' +
     'writes to its debug log at build. A YAML script and the JSON script ' +
     'that mirrors it print the same text.'));
-  body.appendChild(el('pre', null, canonical(model)));
+  body.appendChild(el('pre', 'c-eg-pre', canonical(model)));
   details.appendChild(body);
   output.appendChild(details);
 }
@@ -534,6 +555,7 @@ function reportError(title, message) {
 
 function run() {
   output.textContent = '';
+  resultBox.textContent = '';
   status.textContent = '';
 
   // The script is read first, because the boxes on the right are the
@@ -550,6 +572,17 @@ function run() {
 
   if (validated.faults.length > 0) {
     buildFields(null);
+    // The headline goes above the boxes with every other answer, so a
+    // reader editing a script is told it stopped validating without
+    // having to scroll to find out.
+    const card = el('div', 'c-eg-alert');
+    card.appendChild(el('h2', null, 'Result'));
+    card.appendChild(el('p', null, validated.faults.length === 1
+      ? 'There is no value, because the script has 1 fault. It is listed ' +
+        'below.'
+      : `There is no value, because the script has ` +
+        `${validated.faults.length} faults. They are listed below.`));
+    resultBox.appendChild(card);
     reportFaults(validated.faults);
     return;
   }
@@ -583,6 +616,7 @@ function run() {
 
   reportResult(model, result);
   reportTrace(model, result, canonicalModel);
+  reportMessage(result);
   reportCanonical(model);
 }
 
