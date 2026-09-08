@@ -12,10 +12,13 @@
 # property that could not be read, which is what Expect: { Missing: [...] }
 # below asserts.
 #
-# Two of the eight, device.IsVisible and device.HasWebDriver, only carry a
-# value once the 51Degrees JavaScript has run. The last case in this file
-# is the first request of a session, where neither has run yet, and it is
-# the case a reader should look at first.
+# Two of the eight, device.IsVisible and device.HasWebDriver, carry the
+# string Unknown until the 51Degrees JavaScript has run, and the script
+# reads both as strings so that it can see that value rather than losing
+# it. The case named "the first request of a session, before the
+# JavaScript has run" is the one a reader should look at first, and the
+# block at the end of this file writes out the whole table of what the
+# script answers for each of True, Unknown and False.
 #
 # Between them these cases reach every rule and all three output values,
 # which `node tools/run-cases.mjs` checks and fails on.
@@ -199,9 +202,10 @@ Cases:
       ip.ConnectionType: Broadband
     Expect: { Value: Low }
 
-  # Three counted checks failed, which is the Else again and the worst a
-  # request can do without a decisive check firing.
-  - Name: every counted check failed
+  # Three counted checks failed, which is the Else again. The window was
+  # measured and was not in view, the browser is seven years old and the
+  # address is rated low, and only the connection passes.
+  - Name: a window not in view, an old browser and a low rated address
     Properties:
       device.IsCrawler: false
       device.HasWebDriver: false
@@ -258,11 +262,14 @@ Cases:
       ip.ConnectionType: Broadband
     Expect: { Missing: [ device.BrowserReleaseYear ] }
 
-  # Values that mean "no value" are never coerced. N/A is not false, the
-  # string Unknown is not zero and an empty string is not false, so every
-  # property here is absent and the message must name all of them rather
-  # than only the first.
-  - Name: N/A, Unknown and empty strings are absent rather than false
+  # Values that mean "no value" are never coerced into the type a script
+  # infers. N/A is not false, the string Unknown is not zero and an empty
+  # string is not false, so every property the script reads as a Bool or
+  # as an Int is absent here and the message must name all of them rather
+  # than only the first. device.IsVisible and device.HasWebDriver are read
+  # as strings, so Unknown reads as itself and both are present, which is
+  # the whole point of reading those two as strings.
+  - Name: N/A, Unknown and empty strings never become false or zero
     Properties:
       device.IsCrawler: { String: "N/A" }
       device.HasWebDriver: { String: "Unknown" }
@@ -274,9 +281,7 @@ Cases:
     Expect:
       Missing:
         - device.IsCrawler
-        - device.HasWebDriver
         - device.IsHeadless
-        - device.IsVisible
         - device.BrowserReleaseYear
         - device.BrowserReleaseAge
         - ip.HumanProbability
@@ -313,11 +318,11 @@ Cases:
       ip.ConnectionType: Broadband
     Expect: { Missing: [ ip.HumanProbability ] }
 
-  # The first request of a session, which is the case to read first. The
-  # 51Degrees JavaScript has not run, so device.IsVisible and
-  # device.HasWebDriver both carry Unknown, neither can be read as the
-  # Bool they declare, and the property has no value. Every server side
-  # property is present and would have given High. A pipeline that never
+  # Medium, and the case to read first. The 51Degrees JavaScript has not
+  # run, so device.IsVisible and device.HasWebDriver both carry Unknown.
+  # Every server side check passes and the window was never measured, so
+  # the answer is capped at Medium rather than reaching High, and the
+  # unmeasured window costs the request nothing. A pipeline that never
   # runs the JavaScript looks exactly like this on every request.
   - Name: the first request of a session, before the JavaScript has run
     Properties:
@@ -329,10 +334,7 @@ Cases:
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
-    Expect:
-      Missing:
-        - device.HasWebDriver
-        - device.IsVisible
+    Expect: { Value: Medium }
 
   # Medium. One counted check failed, being ConnectionCarriesPeople,
   # because the address is on a hosting or anonymising connection. The
@@ -395,3 +397,179 @@ Cases:
       ip.HumanProbability: 1
       ip.ConnectionType: Hosting & Anonymous
     Expect: { Value: Low }
+
+  # ------------------------------------------------------------------
+  # The window table, one case for every row of the table in the head
+  # comment of the script.
+  #
+  # Each case below writes device.IsVisible in its string form, being
+  # True, Unknown or False, and varies how many of the other three
+  # counted checks failed. Those three are BrowserIsCurrent,
+  # AddressNotAgainstHuman and ConnectionCarriesPeople, and a case makes
+  # one of them fail by ageing the browser to 2019 and a second fail by
+  # rating the address 2, which is inside the published 0 to 3 low band.
+  # Every other property is held still, so the only thing moving between
+  # these cases is the window and the number of other failures.
+  #
+  #   device.IsVisible   others failed   band
+  #   True               0               High
+  #   True               1               Medium
+  #   True               2 or more       Low
+  #   Unknown            0               Medium
+  #   Unknown            1               Medium
+  #   Unknown            2 or more       Low
+  #   False              0               Medium
+  #   False              1 or more       Low
+  # ------------------------------------------------------------------
+
+  # True, none of the other three failed. High, because the window was
+  # measured and was in view and nothing else says otherwise.
+  - Name: the window was in view and nothing else failed
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "False" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "True" }
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+    Expect: { Value: High }
+
+  # True, one of the other three failed. Medium, being the one failure
+  # the Medium rule allows.
+  - Name: the window was in view and one other check failed
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "False" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "True" }
+      device.BrowserReleaseYear: 2019
+      device.BrowserReleaseAge: 84
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+    Expect: { Value: Medium }
+
+  # True, two of the other three failed. Low.
+  - Name: the window was in view and two other checks failed
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "False" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "True" }
+      device.BrowserReleaseYear: 2019
+      device.BrowserReleaseAge: 84
+      ip.HumanProbability: 2
+      ip.ConnectionType: Broadband
+    Expect: { Value: Low }
+
+  # Unknown, none of the other three failed. Medium rather than High,
+  # which is the whole point of the change. Nobody measured the window,
+  # so the request is charged nothing for it and High is still withheld,
+  # because High claims a person is viewing the page and nothing here
+  # supports that claim.
+  - Name: the window was not measured and nothing else failed
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "Unknown" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "Unknown" }
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+    Expect: { Value: Medium }
+
+  # Unknown, one of the other three failed. Still Medium, because the
+  # unmeasured window spends none of the one failure Medium allows and
+  # the old browser spends it instead. This is the shape of request that
+  # version 0.4.0 answered Low, being an ordinary person one signal short
+  # whose window nobody had measured.
+  - Name: the window was not measured and one other check failed
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "Unknown" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "Unknown" }
+      device.BrowserReleaseYear: 2019
+      device.BrowserReleaseAge: 84
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+    Expect: { Value: Medium }
+
+  # Unknown, two of the other three failed. Low, because two ordinary
+  # signals are against the request whatever the window did.
+  - Name: the window was not measured and two other checks failed
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "Unknown" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "Unknown" }
+      device.BrowserReleaseYear: 2019
+      device.BrowserReleaseAge: 84
+      ip.HumanProbability: 2
+      ip.ConnectionType: Broadband
+    Expect: { Value: Low }
+
+  # False, none of the other three failed. Medium, because the window
+  # was measured and was not in view, which is one failed check.
+  - Name: the window was measured and was not in view, nothing else failed
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "False" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "False" }
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+    Expect: { Value: Medium }
+
+  # False, one of the other three failed. Low, being two failed checks.
+  # This is the row that shows a measured window is treated differently
+  # from an unmeasured one, because the same request with Unknown in
+  # place of False is Medium.
+  - Name: the window was measured and was not in view, one other check failed
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "False" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "False" }
+      device.BrowserReleaseYear: 2019
+      device.BrowserReleaseAge: 84
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+    Expect: { Value: Low }
+
+  # A web driver that has not been asked about does not force Low. Only
+  # True is decisive, so Unknown leaves the request to the counted
+  # checks. The window is in view here so that this case turns on the
+  # web driver alone.
+  - Name: an unasked web driver question does not force Low
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "Unknown" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "True" }
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+    Expect: { Value: High }
+
+  # A value of device.IsVisible that the script does not know fails both
+  # window checks, so it is read the same way as False and the answer is
+  # Medium with nothing else failing. The data does not carry such a
+  # value today and this case pins the safe direction for the day it
+  # does.
+  - Name: a window value the script does not know is read as not in view
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "False" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "N/A" }
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+    Expect: { Value: Medium }
