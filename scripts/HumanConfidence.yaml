@@ -3,9 +3,39 @@
 # Returns High, Medium or Low for the confidence that the request came from
 # a device being used by a human who is viewing the page.
 #
-# THIS SCRIPT IS A DRAFT AT VERSION 0.5.0. The thresholds below have not
+# THIS SCRIPT IS A DRAFT AT VERSION 0.6.0. The thresholds below have not
 # been reviewed by the 51Degrees Senior Data Operators, which is the one
 # thing holding it below 1.0.0.
+#
+# What changed in 0.6.0, and why
+# ------------------------------
+# High now needs a browser released in the last three months, where it
+# used to accept anything under two years. A browser older than three
+# months does not fail a check and cannot on its own take a request to
+# Low, it only stops the answer being High, so the effect is a cap in
+# the same shape as the one for an unmeasured window.
+#
+# The reason is that browsers update themselves. A person using a
+# browser does nothing to keep it current, so a browser more than three
+# months behind is a browser whose updates were stopped, and something
+# stopped them. That is an image left running, a device nobody tends, or
+# a profile kept for automation, and none of those is a person looking
+# at the page, which is what High claims.
+#
+# Two years was never a statement about a person, it was the point past
+# which a browser stops being supported, and BrowserIsCurrent still
+# measures that. Three months is about the release cadence of the major
+# browsers, so a browser that is updating normally sits inside it.
+#
+# This rests on the release ages in the data file being maintained. A
+# stale or wrong release date now decides whether a request can reach
+# High at all, where before it only mattered near the two year line.
+#
+# This does not make High rare for real visitors. A browser that is
+# updating itself is almost always inside three months, so an ordinary
+# person who has run the JavaScript still reaches High. What it excludes
+# is the browser that stopped updating, which is the case worth
+# excluding.
 #
 # What changed in 0.5.0, and why
 # ------------------------------
@@ -164,7 +194,9 @@
 # failed, and the cases file proves every row of it.
 #
 #   device.IsVisible   others failed   band
-#   True               0               High
+#   True               0               High, where the browser was
+#                                      released in the last three
+#                                      months, and Medium otherwise
 #   True               1               Medium
 #   True               2 or more       Low
 #   Unknown            0               Medium
@@ -264,7 +296,7 @@
 
 Format: 1
 Name: HumanConfidence
-Version: 0.5.0
+Version: 0.6.0
 Output:
   Name: HumanConfidence
   Description: The confidence that the request came from a device being used by a human who is viewing the page. Returns one of High, Medium, or Low. Whether the browser window was in view cannot be known from the request alone, so until the 51Degrees JavaScript has run the answer is capped at Medium.
@@ -294,6 +326,14 @@ Checks:
     All:
       - { Property: device.BrowserReleaseYear, Gt: 0 }
       - { Property: device.BrowserReleaseAge,  Lt: 24 }
+  # Only High reads this one, so an older browser caps the answer rather
+  # than counting against it. The year is tested as well as the age
+  # because an unmatched browser leaves the age at its default of 0,
+  # which would otherwise read as the freshest possible.
+  BrowserIsFresh:
+    All:
+      - { Property: device.BrowserReleaseYear, Gt: 0 }
+      - { Property: device.BrowserReleaseAge,  Le: 3 }
   AddressNotAgainstHuman:
     Any:
       - { Property: ip.HumanProbability, Ge: 7 }
@@ -309,8 +349,8 @@ Rules:
   - When: { Check: IsHeadless }
     Then: Low
   - When:
-      Failed: [WindowInView, WindowNotAgainstHuman, BrowserIsCurrent,
-        AddressNotAgainstHuman, ConnectionCarriesPeople]
+      Failed: [WindowInView, WindowNotAgainstHuman, BrowserIsFresh,
+        BrowserIsCurrent, AddressNotAgainstHuman, ConnectionCarriesPeople]
       Eq: 0
     Then: High
   - When:

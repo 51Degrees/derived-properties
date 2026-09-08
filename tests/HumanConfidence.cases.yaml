@@ -573,3 +573,73 @@ Cases:
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
     Expect: { Value: Medium }
+
+  # Version 0.6.0. High needs a browser released in the last three
+  # months. These four walk the boundary and prove that an older browser
+  # only stops High, and does not on its own take a request any lower.
+  - Name: a browser three months old still reaches High
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "False" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "True" }
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 3
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+    Expect: { Value: High }
+
+  - Name: a browser four months old is capped at Medium
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "False" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "True" }
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 4
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+    Expect: { Value: Medium }
+
+  # Eighteen months is old enough to be capped and young enough that
+  # BrowserIsCurrent still passes, so nothing has failed and the answer
+  # is Medium rather than Low.
+  - Name: a browser eighteen months old is capped, not counted against
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "False" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "True" }
+      device.BrowserReleaseYear: 2025
+      device.BrowserReleaseAge: 18
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+    Expect: { Value: Medium }
+
+  # The cap and one real failure together are still Medium, because the
+  # cap is not a failure and the Medium rule allows one.
+  - Name: a browser eighteen months old on an unknown connection
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "False" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "True" }
+      device.BrowserReleaseYear: 2025
+      device.BrowserReleaseAge: 18
+      ip.HumanProbability: 9
+      ip.ConnectionType: Unknown
+    Expect: { Value: Medium }
+
+  # An unmeasured window and a browser past three months, which is the
+  # ordinary first request from a device that has not updated recently.
+  - Name: an unmeasured window and a browser past three months
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "Unknown" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "Unknown" }
+      device.BrowserReleaseYear: 2025
+      device.BrowserReleaseAge: 18
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+    Expect: { Value: Medium }
