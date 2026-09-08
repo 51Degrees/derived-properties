@@ -99,6 +99,35 @@ rejection cases together rather than the unit tests of the tools. The
 command exits with a status of 1 when anything failed, which is what the
 pull request check reads.
 
+## The printed form in canonical/
+
+`canonical/` holds the canonical JSON of every script in `scripts/`, one
+file per script, printed by `tools/canonical.mjs`. It is generated rather
+than written, and it is committed because the languages that embed this
+repository as a submodule read it. Each of them prints a script into the
+same form and has to agree with the tools character for character, and
+the only way to check that from the other side of the boundary is to read
+the text this repository printed. Shipping it in the submodule means a
+script and the print of it move in one commit, so a consumer that bumps
+the submodule gets both and can never see them disagree.
+
+Regenerate it from the repository root after changing a script, and
+commit the result alongside the change.
+
+```text
+node -e "import('./tools/run-cases.mjs').then(async rc=>{
+  const c = await import('./tools/canonical.mjs');
+  const fs = await import('node:fs');
+  for (const s of rc.loadScripts('.')) {
+    fs.writeFileSync('canonical/' + s.name + '.json', c.canonical(s.model) + '\n');
+  }});"
+```
+
+`tools/test/canonical-files.test.mjs` fails where a file is missing, where
+it does not match what the tools print, and where `canonical/` names
+something `scripts/` does not, so a forgotten regeneration is caught here
+rather than in a consumer.
+
 ## Where a property's metadata comes from
 
 There is no separate metadata check to run, because there is nothing to
