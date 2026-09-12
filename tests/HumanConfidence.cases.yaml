@@ -15,12 +15,13 @@
 # Two of the eight, device.IsVisible and device.HasWebDriver, carry the
 # string Unknown until the 51Degrees JavaScript has run, and the script
 # reads both as strings so that it can see that value rather than losing
-# it. The case named "the first request of a session, before the
-# JavaScript has run" is the one a reader should look at first, and the
-# block at the end of this file writes out the whole table of what the
-# script answers for each of True, Unknown and False.
+# it. Where either holds Unknown the answer is the value Unknown, and
+# the case named "the first request of a session, before the JavaScript
+# has run" is the one a reader should look at first. The block at the
+# end of this file writes out the whole table of what the script answers
+# for each of True, Unknown and False.
 #
-# Between them these cases reach every rule and all three output values,
+# Between them these cases reach every rule and all four output values,
 # which `node tools/run-cases.mjs` checks and fails on.
 
 Script: HumanConfidence
@@ -318,12 +319,12 @@ Cases:
       ip.ConnectionType: Broadband
     Expect: { Missing: [ ip.HumanProbability ] }
 
-  # Medium, and the case to read first. The 51Degrees JavaScript has not
+  # Unknown, and the case to read first. The 51Degrees JavaScript has not
   # run, so device.IsVisible and device.HasWebDriver both carry Unknown.
   # Every server side check passes and the window was never measured, so
-  # the answer is capped at Medium rather than reaching High, and the
-  # unmeasured window costs the request nothing. A pipeline that never
-  # runs the JavaScript looks exactly like this on every request.
+  # the answer is Unknown rather than a band, because an unknown input
+  # gives an unknown output. A pipeline that never runs the JavaScript
+  # looks exactly like this on every request.
   - Name: the first request of a session, before the JavaScript has run
     Properties:
       device.IsCrawler: false
@@ -334,7 +335,50 @@ Cases:
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
-    Expect: { Value: Medium }
+    Expect: { Value: Unknown }
+
+  # Low. A crawler is Low whether or not the JavaScript ran, because the
+  # three decisive checks are read ahead of the Unknown rule. This is the
+  # one place 0.7.0 takes a position rather than following from the rule
+  # that an unknown input gives an unknown output.
+  - Name: a crawler is Low before the JavaScript has run
+    Properties:
+      device.IsCrawler: true
+      device.HasWebDriver: { String: "Unknown" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "Unknown" }
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+    Expect: { Value: Low }
+
+  # Low. A headless browser is decisive from the request alone as well.
+  - Name: a headless browser is Low before the JavaScript has run
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "Unknown" }
+      device.IsHeadless: true
+      device.IsVisible: { String: "Unknown" }
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+    Expect: { Value: Low }
+
+  # Unknown, with every value in its string form, which is how the two
+  # arrive from a data file.
+  - Name: the first request of a session, every value in its string form
+    Properties:
+      device.IsCrawler: { String: "False" }
+      device.HasWebDriver: { String: "Unknown" }
+      device.IsHeadless: { String: "False" }
+      device.IsVisible: { String: "Unknown" }
+      device.BrowserReleaseYear: { String: "2026" }
+      device.BrowserReleaseAge: { String: "1" }
+      ip.HumanProbability: { String: "9" }
+      ip.ConnectionType: { String: "Broadband" }
+    Expect: { Value: Unknown }
 
   # Medium. One counted check failed, being ConnectionCarriesPeople,
   # because the address is on a hosting or anonymising connection. The
@@ -415,9 +459,9 @@ Cases:
   #   True               0               High
   #   True               1               Medium
   #   True               2 or more       Low
-  #   Unknown            0               Medium
-  #   Unknown            1               Medium
-  #   Unknown            2 or more       Low
+  #   Unknown            0               Unknown
+  #   Unknown            1               Unknown
+  #   Unknown            2 or more       Unknown
   #   False              0               Medium
   #   False              1 or more       Low
   # ------------------------------------------------------------------
@@ -463,11 +507,10 @@ Cases:
       ip.ConnectionType: Broadband
     Expect: { Value: Low }
 
-  # Unknown, none of the other three failed. Medium rather than High,
-  # which is the whole point of the change. Nobody measured the window,
-  # so the request is charged nothing for it and High is still withheld,
-  # because High claims a person is viewing the page and nothing here
-  # supports that claim.
+  # Unknown, none of the other three failed. Unknown rather than a band,
+  # which is the whole point of 0.7.0. Nobody measured the window, so
+  # nothing here supports the claim High makes and nothing here says the
+  # evidence pointed both ways either, which is what Medium would say.
   - Name: the window was not measured and nothing else failed
     Properties:
       device.IsCrawler: false
@@ -478,13 +521,13 @@ Cases:
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
-    Expect: { Value: Medium }
+    Expect: { Value: Unknown }
 
-  # Unknown, one of the other three failed. Still Medium, because the
-  # unmeasured window spends none of the one failure Medium allows and
-  # the old browser spends it instead. This is the shape of request that
-  # version 0.4.0 answered Low, being an ordinary person one signal short
-  # whose window nobody had measured.
+  # Unknown, one of the other three failed. Still Unknown, because the
+  # unmeasured window is answered before anything is counted. This is the
+  # shape of request that version 0.4.0 answered Low, being an ordinary
+  # person one signal short whose window nobody had measured, and that
+  # 0.5.0 and 0.6.0 answered Medium.
   - Name: the window was not measured and one other check failed
     Properties:
       device.IsCrawler: false
@@ -495,10 +538,12 @@ Cases:
       device.BrowserReleaseAge: 84
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
-    Expect: { Value: Medium }
+    Expect: { Value: Unknown }
 
-  # Unknown, two of the other three failed. Low, because two ordinary
-  # signals are against the request whatever the window did.
+  # Unknown, two of the other three failed. Still Unknown. Two ordinary
+  # signals are against the request, but neither is proof of automation,
+  # and the window was never measured, so no band is chosen. Only the
+  # three decisive checks answer ahead of Unknown.
   - Name: the window was not measured and two other checks failed
     Properties:
       device.IsCrawler: false
@@ -509,7 +554,7 @@ Cases:
       device.BrowserReleaseAge: 84
       ip.HumanProbability: 2
       ip.ConnectionType: Broadband
-    Expect: { Value: Low }
+    Expect: { Value: Unknown }
 
   # False, none of the other three failed. Medium, because the window
   # was measured and was not in view, which is one failed check.
@@ -541,11 +586,12 @@ Cases:
       ip.ConnectionType: Broadband
     Expect: { Value: Low }
 
-  # A web driver that has not been asked about does not force Low. Only
-  # True is decisive, so Unknown leaves the request to the counted
-  # checks. The window is in view here so that this case turns on the
-  # web driver alone.
-  - Name: an unasked web driver question does not force Low
+  # A web driver that has not been asked about does not force Low, and
+  # nor does it leave the request to the counted checks. Unknown in
+  # either of the two properties the JavaScript populates means the
+  # JavaScript has not run, so the answer is Unknown. The window is in
+  # view here so that this case turns on the web driver alone.
+  - Name: an unasked web driver question answers Unknown
     Properties:
       device.IsCrawler: false
       device.HasWebDriver: { String: "Unknown" }
@@ -555,10 +601,10 @@ Cases:
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
-    Expect: { Value: High }
+    Expect: { Value: Unknown }
 
-  # A value of device.IsVisible that the script does not know fails both
-  # window checks, so it is read the same way as False and the answer is
+  # A value of device.IsVisible that the script does not know fails the
+  # window check, so it is read the same way as False and the answer is
   # Medium with nothing else failing. The data does not carry such a
   # value today and this case pins the safe direction for the day it
   # does.
@@ -632,6 +678,7 @@ Cases:
 
   # An unmeasured window and a browser past three months, which is the
   # ordinary first request from a device that has not updated recently.
+  # Unknown, because the window decides before the browser is looked at.
   - Name: an unmeasured window and a browser past three months
     Properties:
       device.IsCrawler: false
@@ -642,4 +689,4 @@ Cases:
       device.BrowserReleaseAge: 18
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
-    Expect: { Value: Medium }
+    Expect: { Value: Unknown }
