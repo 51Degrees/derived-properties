@@ -263,6 +263,50 @@ Cases:
       ip.ConnectionType: Broadband
     Expect: { Missing: [ device.BrowserReleaseYear ] }
 
+  # The two properties this version is about, absent rather than carrying
+  # Unknown. Answering the value Unknown is for a property that is present
+  # and says it does not know. A property that is not there at all is a
+  # different thing, and it keeps the ordinary no value behaviour with the
+  # message naming it, because a script cannot read a property it names.
+  # These two cases are the ones a reviewer of 0.7.0 should look at, since
+  # the Unknown rule must not swallow them.
+  - Name: device.IsVisible is absent rather than Unknown
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "False" }
+      device.IsHeadless: false
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+    Expect: { Missing: [ device.IsVisible ] }
+
+  - Name: device.HasWebDriver is absent rather than Unknown
+    Properties:
+      device.IsCrawler: false
+      device.IsHeadless: false
+      device.IsVisible: { String: "True" }
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+    Expect: { Missing: [ device.HasWebDriver ] }
+
+  # Both absent at once, so the message names both rather than stopping at
+  # the first, and the order follows the order the script first names them.
+  - Name: both JavaScript populated properties absent
+    Properties:
+      device.IsCrawler: false
+      device.IsHeadless: false
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+    Expect:
+      Missing:
+        - device.HasWebDriver
+        - device.IsVisible
+
   # Values that mean "no value" are never coerced into the type a script
   # infers. N/A is not false, the string Unknown is not zero and an empty
   # string is not false, so every property the script reads as a Bool or
