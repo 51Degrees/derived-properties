@@ -1,0 +1,94 @@
+# Conformance cases for scripts/IsGdpr.yaml.
+#
+# Every language implementation runs these cases and must give the same
+# answer for every one. A property that is not listed is absent. A property
+# written as { String: "..." } arrives as the string form of the value
+# rather than the native type, which is how a value read from a data file
+# or from a cloud response usually arrives.
+#
+# The script names one source property, ip.CountryCode, and it is
+# necessary, so a request that does not carry it has no value for this
+# property at all. That is what the last case asserts, and it is the case a
+# reader should look at second, after the Unknown one.
+#
+# Between them these cases reach all three rules and both output values,
+# which `node tools/run-cases.mjs` checks and fails on.
+
+Script: IsGdpr
+Cases:
+
+  # In scope. A member state of the European Union.
+  - Name: a member state of the European Union
+    Properties:
+      ip.CountryCode: FR
+    Expect: { Value: true }
+
+  # In scope. A European Economic Area state that is not in the Union.
+  - Name: an EEA state outside the Union
+    Properties:
+      ip.CountryCode: NO
+    Expect: { Value: true }
+
+  # In scope. The United Kingdom, under its own version of the regulation
+  # rather than under the Union's.
+  - Name: the United Kingdom
+    Properties:
+      ip.CountryCode: GB
+    Expect: { Value: true }
+
+  # In scope. A French outermost region, which carries its own ISO code
+  # and is part of the European Union.
+  - Name: a French outermost region
+    Properties:
+      ip.CountryCode: RE
+    Expect: { Value: true }
+
+  # Out of scope. The clearest case, and the one the hard coded true in
+  # the Preference Management Platform gets wrong today.
+  - Name: the United States
+    Properties:
+      ip.CountryCode: US
+    Expect: { Value: false }
+
+  # Out of scope, and deliberately so. Switzerland has its own law and is
+  # not in the European Economic Area.
+  - Name: Switzerland, which has its own law
+    Properties:
+      ip.CountryCode: CH
+    Expect: { Value: false }
+
+  # Out of scope, and deliberately so. A Crown Dependency is not part of
+  # the United Kingdom.
+  - Name: Jersey, a Crown Dependency
+    Properties:
+      ip.CountryCode: JE
+    Expect: { Value: false }
+
+  # Out of scope. A country nobody has considered answers false, which is
+  # the visible way round, because a publisher who sees it tells us.
+  - Name: a country the list does not name
+    Properties:
+      ip.CountryCode: BR
+    Expect: { Value: false }
+
+  # The address could not be placed. The conservative answer, written out
+  # in full at the top of the script.
+  - Name: the country could not be read
+    Properties:
+      ip.CountryCode: Unknown
+    Expect: { Value: true }
+
+  # The value arrives as a string, which is how a cloud response carries
+  # it, and must be read the same way as the native form.
+  - Name: the code arrives as a string
+    Properties:
+      ip.CountryCode: { String: "DE" }
+    Expect: { Value: true }
+
+  # No country property at all, which is a pipeline with no IP
+  # intelligence element in it, or a resource key not entitled to the
+  # property. The script names it, so there is no value and the message
+  # names what was missing.
+  - Name: no country property on the request
+    Properties: {}
+    Expect: { Missing: [ip.CountryCode] }

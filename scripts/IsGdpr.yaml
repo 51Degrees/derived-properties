@@ -1,0 +1,153 @@
+# IsGdpr
+#
+# Returns True where the General Data Protection Regulation, or the United
+# Kingdom's own version of it, is likely to apply to the person making the
+# request, judged from the country the request came from.
+#
+# THIS SCRIPT IS A DRAFT AT VERSION 0.1.0. The country list below has not
+# been reviewed by anyone qualified to confirm it, which is the one thing
+# holding it below 1.0.0.
+#
+# What it is for
+# --------------
+# A consent interface has to decide whether to ask for consent at all, and
+# the IAB Transparency and Consent Framework carries that decision in a
+# field named gdprApplies. Today the 51Degrees Preference Management
+# Platform hard codes it to true, which is wrong everywhere the regulation
+# does not reach. This property answers it from the request instead, so a
+# publisher configures nothing.
+#
+# READ THIS BEFORE USING THE PROPERTY
+# -----------------------------------
+# This is a good default and it is not a determination. The regulation
+# reaches an organisation by where that organisation is established as well
+# as by where the person is, so a publisher established in the European
+# Union is within scope while serving a visitor in the United States, and
+# this property will answer False for that request. Any caller that knows
+# its own position should be able to override what this says, and the
+# property exists so that a caller which knows nothing still behaves
+# sensibly rather than assuming one answer for the whole world.
+#
+# The source property, and what it is
+# -----------------------------------
+# One property, read from the 51Degrees property metadata.
+#
+#   ip.CountryCode  String, mandatory, default Unknown. The published
+#                   description is "The 2-character ISO 3166-1 code of the
+#                   country that the supplied location is in". Being
+#                   mandatory with a string default, it always reads, so
+#                   naming it costs no request its value.
+#
+# The address is the only thing this script reads, which is deliberate.
+# Where the person is, is the only part of the question a request can
+# answer, and every other part of it belongs to the publisher.
+#
+# WHY AN UNKNOWN COUNTRY ANSWERS TRUE
+# -----------------------------------
+# Where the address cannot be placed, the data carries the string Unknown
+# and this script answers True.
+#
+# That is the conservative answer rather than the accurate one, and it is
+# chosen on purpose. Answering False would mean a person the regulation
+# does protect is not asked for consent, because their address could not be
+# read. Answering True means a person it does not protect is asked anyway,
+# which costs them a dialogue they did not need. The first is a harm and
+# the second is an inconvenience.
+#
+# It also means nothing regresses. The Preference Management Platform
+# answers true for every request today, so a request whose country cannot
+# be read keeps the answer it already had.
+#
+# The country list, and what is deliberately not in it
+# ----------------------------------------------------
+# The list is the twenty seven member states of the European Union, the
+# three further states of the European Economic Area, being Iceland,
+# Liechtenstein and Norway, and the United Kingdom under its own version of
+# the regulation. Thirty one codes.
+#
+# The five French outermost regions are named separately, being French
+# Guiana, Guadeloupe, Martinique, Mayotte and Reunion. They are part of the
+# European Union and the regulation applies to them. Whether the data
+# returns their own codes or returns FR for them is a question about the
+# data rather than about the law, so they are named here and cost nothing
+# if the data never returns them. The Spanish and Portuguese outermost
+# regions have no separate ISO 3166-1 code and arrive as ES and PT, so they
+# need no entry.
+#
+# Deliberately absent, each for its own reason.
+#
+#   CH          Switzerland has its own Federal Act on Data Protection and
+#               is not in the European Economic Area.
+#   GI          Gibraltar has its own data protection law and is not part
+#               of the United Kingdom.
+#   JE GG IM    Jersey, Guernsey and the Isle of Man are Crown
+#               Dependencies with their own laws, not part of the United
+#               Kingdom.
+#   AD MC SM VA The European microstates are not in the European Economic
+#               Area.
+#   The overseas countries and territories associated with member states,
+#   such as Saint Barthelemy, Saint Pierre and Miquelon, Greenland and the
+#   Faroe Islands, are outside the European Union for this purpose.
+#
+# Anything not named answers False, which is the right way round for a
+# list of this shape, because a country the list does not name is one
+# nobody has considered and a False answer is visible to a publisher who
+# then tells us. The alternative, defaulting unnamed countries to True,
+# would hide the omission.
+#
+# The Output block below IS the definition of this property
+# --------------------------------------------------------
+# It carries the description and the value type that a customer reads. No
+# second copy of it is kept anywhere, so a change to Output is a change to
+# the property itself.
+#
+# IsMandatory is true, because the one property this script reads is itself
+# mandatory with a string default, so there is no request on which this
+# property has no value. There is no Values list, because the output is a
+# Bool and the two values of a Bool need no describing.
+#
+# What holds this script below 1.0.0
+# ----------------------------------
+# Nobody qualified has reviewed the country list or the decision that an
+# unreadable address answers True. Being below 1.0.0 is what makes this
+# script a draft, and a draft may be rewritten freely, so the version and
+# removal checks do not apply to it.
+
+Format: 1
+Name: IsGdpr
+Version: 0.1.0
+Output:
+  Name: IsGdpr
+  Description: Whether the General Data Protection Regulation, or the United Kingdom's version of it, is likely to apply to the person making the request, judged from the country of the supplied location. True for the European Economic Area and the United Kingdom, and also where the country could not be read, because assuming the regulation applies is the safer answer. This is a default for a caller that knows nothing about its own position, and not a determination, because the regulation also reaches an organisation by where it is established.
+  ValueType: bool
+  IsList: false
+  IsMandatory: true
+  IsObsolete: false
+  Category: Country Information
+  IsPopular: false
+  ExportValues: true
+Checks:
+  # The European Economic Area and the United Kingdom. The five French
+  # outermost regions are named because they carry their own ISO 3166-1
+  # codes and are part of the European Union.
+  InScope:
+    Property: ip.CountryCode
+    In: [
+      "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR",
+      "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL",
+      "PL", "PT", "RO", "SK", "SI", "ES", "SE",
+      "IS", "LI", "NO",
+      "GB",
+      "GF", "GP", "MQ", "YT", "RE"
+    ]
+  # The address could not be placed. Answered the same as in scope, for
+  # the reason written out at the top of this file.
+  CountryNotKnown:
+    Property: ip.CountryCode
+    Eq: "Unknown"
+Rules:
+  - When: { Check: InScope }
+    Then: true
+  - When: { Check: CountryNotKnown }
+    Then: true
+  - Else: false
