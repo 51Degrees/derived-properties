@@ -8,8 +8,10 @@
 #
 # The script names one source property, ip.CountryCode, and it is
 # necessary, so a request that does not carry it has no value for this
-# property at all. That is what the last case asserts, and it is the case a
-# reader should look at second, after the Unknown one.
+# property at all, and the message names it. That is what the last case
+# asserts, and it is a different thing from the property carrying the
+# string Unknown, which is an ordinary value that simply is not on the
+# list.
 #
 # Between them these cases reach all three rules and both output values,
 # which `node tools/run-cases.mjs` checks and fails on.
@@ -71,12 +73,14 @@ Cases:
       ip.CountryCode: BR
     Expect: { Value: false }
 
-  # The address could not be placed. The conservative answer, written out
-  # in full at the top of the script.
+  # The address could not be placed. The data carries the string Unknown,
+  # which is not on the list, so it answers the same as any other country
+  # the list does not name. This is the case a reader should look at
+  # first, because it is the one people assume goes the other way.
   - Name: the country could not be read
     Properties:
       ip.CountryCode: Unknown
-    Expect: { Value: true }
+    Expect: { Value: false }
 
   # The value arrives as a string, which is how a cloud response carries
   # it, and must be read the same way as the native form.

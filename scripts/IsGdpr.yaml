@@ -42,21 +42,27 @@
 # Where the person is, is the only part of the question a request can
 # answer, and every other part of it belongs to the publisher.
 #
-# WHY AN UNKNOWN COUNTRY ANSWERS TRUE
-# -----------------------------------
-# Where the address cannot be placed, the data carries the string Unknown
-# and this script answers True.
+# AN ADDRESS THAT CANNOT BE PLACED ANSWERS FALSE
+# ----------------------------------------------
+# Where the address cannot be placed, the data carries the string Unknown,
+# which is not on the list, so this property answers False.
 #
-# That is the conservative answer rather than the accurate one, and it is
-# chosen on purpose. Answering False would mean a person the regulation
-# does protect is not asked for consent, because their address could not be
-# read. Answering True means a person it does not protect is asked anyway,
-# which costs them a dialogue they did not need. The first is a harm and
-# the second is an inconvenience.
+# That follows the rule the format is built on rather than making an
+# exception to it. A country the list does not name answers False, and
+# Unknown is such a country. The alternative, answering True for an
+# unreadable address, would mean the property said the regulation applies
+# on the strength of knowing nothing at all, and a caller could not tell
+# that answer apart from one about a person actually in Europe.
 #
-# It also means nothing regresses. The Preference Management Platform
-# answers true for every request today, so a request whose country cannot
-# be read keeps the answer it already had.
+# A caller that wants to be careful about an unplaceable address can be,
+# because it can see the country for itself. A caller that cannot see it
+# is better served by an answer that means what it says.
+#
+# Where the source property is absent altogether, rather than carrying
+# Unknown, this property has no value and the ordinary message names
+# ip.CountryCode as the property that could not be read. That happens
+# where no IP intelligence element ran, or where the resource key is not
+# entitled to the property.
 #
 # The country list, and what is deliberately not in it
 # ----------------------------------------------------
@@ -108,8 +114,7 @@
 #
 # What holds this script below 1.0.0
 # ----------------------------------
-# Nobody qualified has reviewed the country list or the decision that an
-# unreadable address answers True. Being below 1.0.0 is what makes this
+# Nobody qualified has reviewed the country list. Being below 1.0.0 is what makes this
 # script a draft, and a draft may be rewritten freely, so the version and
 # removal checks do not apply to it.
 
@@ -118,7 +123,7 @@ Name: IsGdpr
 Version: 0.1.0
 Output:
   Name: IsGdpr
-  Description: Whether the General Data Protection Regulation, or the United Kingdom's version of it, is likely to apply to the person making the request, judged from the country of the supplied location. True for the European Economic Area and the United Kingdom, and also where the country could not be read, because assuming the regulation applies is the safer answer. This is a default for a caller that knows nothing about its own position, and not a determination, because the regulation also reaches an organisation by where it is established.
+  Description: Whether the General Data Protection Regulation, or the United Kingdom's version of it, is likely to apply to the person making the request, judged from the country of the supplied location. True for the European Economic Area and the United Kingdom, and False everywhere else, including where the location could not be placed. This is a default for a caller that knows nothing about its own position, and not a determination, because the regulation also reaches an organisation by where it is established.
   ValueType: bool
   IsList: false
   IsMandatory: true
@@ -140,14 +145,7 @@ Checks:
       "GB",
       "GF", "GP", "MQ", "YT", "RE"
     ]
-  # The address could not be placed. Answered the same as in scope, for
-  # the reason written out at the top of this file.
-  CountryNotKnown:
-    Property: ip.CountryCode
-    Eq: "Unknown"
 Rules:
   - When: { Check: InScope }
-    Then: true
-  - When: { Check: CountryNotKnown }
     Then: true
   - Else: false
