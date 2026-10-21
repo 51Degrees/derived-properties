@@ -3,7 +3,7 @@
 # Returns High, Medium, Low or Unknown for the confidence that the request
 # came from a device being used by a human who is viewing the page.
 #
-# THIS SCRIPT IS A DRAFT AT VERSION 0.7.0. The thresholds below have not
+# THIS SCRIPT IS A DRAFT AT VERSION 0.7.1. The thresholds below have not
 # been reviewed by the 51Degrees Senior Data Operators, which is the one
 # thing holding it below 1.0.0.
 #
@@ -132,7 +132,7 @@
 #
 # The source properties, and what each one is
 # -------------------------------------------
-# Eight properties, all read from the 51Degrees property metadata and
+# Nine properties, all read from the 51Degrees property metadata and
 # checked against a production data file. Naming a property makes it
 # necessary, so the script names no others.
 #
@@ -163,6 +163,15 @@
 #                             and nothing else. Being a string, Unknown
 #                             reads perfectly well, so naming this
 #                             property costs no request its value.
+#   agent-signature.AgentSignature
+#                             String, not mandatory, default Absent. The
+#                             outcome of checking a Web Bot Auth signature,
+#                             one of Absent, Invalid, Unverified, Timeout
+#                             and Verified. A request with no signature
+#                             reads Absent, so naming this property costs
+#                             no request its value where the pipeline has
+#                             an element publishing agent-signature, and a
+#                             pipeline without one gives no value at all.
 #
 # Populated by the 51Degrees JavaScript, and read as strings.
 #
@@ -191,13 +200,15 @@
 # by an aggregate is decided by naming it in the group rather than by
 # which syntax it happens to use.
 #
-# Three checks are decisive on their own and are deliberately left out of
+# Four checks are decisive on their own and are deliberately left out of
 # the counted groups, because each is proof of automation rather than one
 # signal among several.
 #
 #   IsCrawler     The request says it is a crawler.
 #   HasWebDriver  The browser advertises a web driver.
 #   IsHeadless    The browser advertises no visible window.
+#   SignedAgent   The request carries a Web Bot Auth signature that
+#                 verified, so an agent has said who it is.
 #
 # Two checks say the JavaScript has not run, and together they decide
 # the answer is Unknown before anything is counted.
@@ -321,7 +332,7 @@
 
 Format: 1
 Name: HumanConfidence
-Version: 0.7.0
+Version: 0.7.1
 Output:
   Name: HumanConfidence
   Description: The confidence that the request came from a device being used by a human who is viewing the page. Returns one of High, Medium, Low or Unknown. Whether the browser window was in view cannot be known from the request alone, so until the 51Degrees JavaScript has run the answer is Unknown.
@@ -367,12 +378,17 @@ Checks:
   ConnectionCarriesPeople:
     Property: ip.ConnectionType
     In: ["Broadband", "Cellular"]
+  SignedAgent:
+    Property: agent-signature.AgentSignature
+    Eq: Verified
 Rules:
   - When: { Check: IsCrawler }
     Then: Low
   - When: { Check: HasWebDriver }
     Then: Low
   - When: { Check: IsHeadless }
+    Then: Low
+  - When: { Check: SignedAgent }
     Then: Low
   - When:
       Any: [ { Check: WindowNotMeasured }, { Check: WebDriverNotAsked } ]
