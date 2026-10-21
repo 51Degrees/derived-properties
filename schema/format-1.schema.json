@@ -57,9 +57,9 @@
     },
 
     "sourceProperty": {
-      "description": "A property already in the flow data, written as elementKey.PropertyName, for example device.IsCrawler.",
+      "description": "A property already in the flow data, written as elementKey.PropertyName, for example device.IsCrawler or agent-signature.AgentSignature. An element key may carry single hyphens between letters and digits.",
       "type": "string",
-      "pattern": "^[A-Za-z][A-Za-z0-9]*\\.[A-Za-z][A-Za-z0-9]*$"
+      "pattern": "^[A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)*\\.[A-Za-z][A-Za-z0-9]*$"
     },
 
     "output": {

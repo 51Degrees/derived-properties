@@ -92,7 +92,9 @@ These words are used throughout with the meanings given here.
 - **Element data key.** The short name a pipeline element publishes its
   results under, for example `device` for device detection and `ip` for
   IP intelligence. The output of `DerivedPropertyElement` itself appears
-  under the key `derived`.
+  under the key `derived`. A key starts with a letter and holds letters
+  and digits, with single hyphens allowed between them, as in
+  `agent-signature`.
 - **Aggregate.** A count of checks, being how many passed or how many
   failed.
 - **Group.** What an aggregate counts over, being either the word
