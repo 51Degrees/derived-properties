@@ -6,13 +6,13 @@
 # rather than the native type, which is how a value read from a data file
 # or from a cloud response usually arrives.
 #
-# The script names eight source properties and every one of them is
+# The script names nine source properties and every one of them is
 # necessary, because a property is either present or it is not. Where one
 # is absent the whole property has no value and the message names every
 # property that could not be read, which is what Expect: { Missing: [...] }
 # below asserts.
 #
-# Two of the eight, device.IsVisible and device.HasWebDriver, carry the
+# Two of the nine, device.IsVisible and device.HasWebDriver, carry the
 # string Unknown until the 51Degrees JavaScript has run, and the script
 # reads both as strings so that it can see that value rather than losing
 # it. Where either holds Unknown the answer is the value Unknown, and
@@ -38,6 +38,7 @@ Cases:
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Value: High }
 
   # The same request with every value in its string form, which must be
@@ -52,6 +53,7 @@ Cases:
       device.BrowserReleaseAge: { String: "1" }
       ip.HumanProbability: { String: "9" }
       ip.ConnectionType: { String: "Broadband" }
+      agent-signature.AgentSignature: Absent
     Expect: { Value: High }
 
   # A value that arrives as a list of weighted values takes the one with
@@ -68,6 +70,7 @@ Cases:
         - { Value: 2, Weight: 1 }
         - { Value: 9, Weight: 9 }
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Value: High }
 
   # Low. A declared crawler is Low on its own. Every counted check passes
@@ -83,6 +86,7 @@ Cases:
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Value: Low }
 
   # Low. A browser advertising a web driver is under automation, which is
@@ -97,6 +101,7 @@ Cases:
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Value: Low }
 
   # Low. A browser advertising no visible window, again decisive with
@@ -111,6 +116,7 @@ Cases:
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Value: Low }
 
   # Medium. One counted check failed, being IsVisible, because the page
@@ -125,6 +131,7 @@ Cases:
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Value: Medium }
 
   # Medium. One counted check failed, being BrowserIsCurrent, because the
@@ -139,6 +146,7 @@ Cases:
       device.BrowserReleaseAge: 84
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Value: Medium }
 
   # An unrated IP address does not count against the request. The data
@@ -156,6 +164,7 @@ Cases:
       device.BrowserReleaseAge: 1
       ip.HumanProbability: -1
       ip.ConnectionType: Cellular
+      agent-signature.AgentSignature: Absent
     Expect: { Value: High }
 
   # The same guard must not swallow a rated low address. 2 is inside the
@@ -172,6 +181,7 @@ Cases:
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 2
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Value: Medium }
 
   # 7 is the published line for high confidence, so it must pass. This
@@ -187,6 +197,7 @@ Cases:
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 7
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Value: High }
 
   # The Else, Low. Two counted checks failed, being BrowserIsCurrent and
@@ -201,6 +212,7 @@ Cases:
       device.BrowserReleaseAge: 84
       ip.HumanProbability: 2
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Value: Low }
 
   # Three counted checks failed, which is the Else again. The window was
@@ -216,6 +228,7 @@ Cases:
       device.BrowserReleaseAge: 84
       ip.HumanProbability: 2
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Value: Low }
 
   # No value, one property absent. The device element is in the pipeline
@@ -230,6 +243,7 @@ Cases:
       device.BrowserReleaseYear: 2026
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Missing: [ device.BrowserReleaseAge ] }
 
   # No value, a whole element absent. HumanProbability is the only
@@ -243,6 +257,7 @@ Cases:
       device.IsVisible: true
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
+      agent-signature.AgentSignature: Absent
     Expect:
       Missing:
         - ip.HumanProbability
@@ -261,6 +276,7 @@ Cases:
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Missing: [ device.BrowserReleaseYear ] }
 
   # The two properties this version is about, absent rather than carrying
@@ -279,6 +295,7 @@ Cases:
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Missing: [ device.IsVisible ] }
 
   - Name: device.HasWebDriver is absent rather than Unknown
@@ -290,6 +307,7 @@ Cases:
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Missing: [ device.HasWebDriver ] }
 
   # Both absent at once, so the message names both rather than stopping at
@@ -302,6 +320,7 @@ Cases:
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect:
       Missing:
         - device.HasWebDriver
@@ -323,6 +342,7 @@ Cases:
       device.BrowserReleaseYear: { String: "Unknown" }
       device.BrowserReleaseAge: { String: "N/A" }
       ip.HumanProbability: { String: "" }
+      agent-signature.AgentSignature: Absent
     Expect:
       Missing:
         - device.IsCrawler
@@ -346,6 +366,7 @@ Cases:
         - device.BrowserReleaseAge
         - ip.HumanProbability
         - ip.ConnectionType
+        - agent-signature.AgentSignature
 
   # The format fixes int at a signed 32 bit whole number, so a value
   # outside that range cannot be read and the property is absent. This
@@ -361,6 +382,7 @@ Cases:
       device.BrowserReleaseAge: 1
       ip.HumanProbability: { String: "3000000000" }
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Missing: [ ip.HumanProbability ] }
 
   # Unknown, and the case to read first. The 51Degrees JavaScript has not
@@ -379,6 +401,7 @@ Cases:
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Value: Unknown }
 
   # Low. A crawler is Low whether or not the JavaScript ran, because the
@@ -395,6 +418,7 @@ Cases:
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Value: Low }
 
   # Low. A headless browser is decisive from the request alone as well.
@@ -408,6 +432,7 @@ Cases:
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Value: Low }
 
   # Unknown, with every value in its string form, which is how the two
@@ -422,6 +447,7 @@ Cases:
       device.BrowserReleaseAge: { String: "1" }
       ip.HumanProbability: { String: "9" }
       ip.ConnectionType: { String: "Broadband" }
+      agent-signature.AgentSignature: Absent
     Expect: { Value: Unknown }
 
   # Medium. One counted check failed, being ConnectionCarriesPeople,
@@ -440,6 +466,7 @@ Cases:
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
       ip.ConnectionType: Hosting & Anonymous
+      agent-signature.AgentSignature: Absent
     Expect: { Value: Medium }
 
   # Cellular passes, being the other connection people browse on.
@@ -453,6 +480,7 @@ Cases:
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
       ip.ConnectionType: Cellular
+      agent-signature.AgentSignature: Absent
     Expect: { Value: High }
 
   # Unknown fails the check rather than being read as neutral, so a
@@ -470,6 +498,7 @@ Cases:
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
       ip.ConnectionType: Unknown
+      agent-signature.AgentSignature: Absent
     Expect: { Value: Medium }
 
   # Two counted checks failed, being the connection and the address, so
@@ -484,6 +513,7 @@ Cases:
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 1
       ip.ConnectionType: Hosting & Anonymous
+      agent-signature.AgentSignature: Absent
     Expect: { Value: Low }
 
   # ------------------------------------------------------------------
@@ -522,6 +552,7 @@ Cases:
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Value: High }
 
   # True, one of the other three failed. Medium, being the one failure
@@ -536,6 +567,7 @@ Cases:
       device.BrowserReleaseAge: 84
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Value: Medium }
 
   # True, two of the other three failed. Low.
@@ -549,6 +581,7 @@ Cases:
       device.BrowserReleaseAge: 84
       ip.HumanProbability: 2
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Value: Low }
 
   # Unknown, none of the other three failed. Unknown rather than a band,
@@ -565,6 +598,7 @@ Cases:
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Value: Unknown }
 
   # Unknown, one of the other three failed. Still Unknown, because the
@@ -582,6 +616,7 @@ Cases:
       device.BrowserReleaseAge: 84
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Value: Unknown }
 
   # Unknown, two of the other three failed. Still Unknown. Two ordinary
@@ -598,6 +633,7 @@ Cases:
       device.BrowserReleaseAge: 84
       ip.HumanProbability: 2
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Value: Unknown }
 
   # False, none of the other three failed. Medium, because the window
@@ -612,6 +648,7 @@ Cases:
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Value: Medium }
 
   # False, one of the other three failed. Low, being two failed checks.
@@ -628,6 +665,7 @@ Cases:
       device.BrowserReleaseAge: 84
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Value: Low }
 
   # A web driver that has not been asked about does not force Low, and
@@ -645,6 +683,7 @@ Cases:
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Value: Unknown }
 
   # A value of device.IsVisible that the script does not know fails the
@@ -662,6 +701,7 @@ Cases:
       device.BrowserReleaseAge: 1
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Value: Medium }
 
   # Version 0.6.0. High needs a browser released in the last three
@@ -677,6 +717,7 @@ Cases:
       device.BrowserReleaseAge: 3
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Value: High }
 
   - Name: a browser four months old is capped at Medium
@@ -689,6 +730,7 @@ Cases:
       device.BrowserReleaseAge: 4
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Value: Medium }
 
   # Eighteen months is old enough to be capped and young enough that
@@ -704,6 +746,7 @@ Cases:
       device.BrowserReleaseAge: 18
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Value: Medium }
 
   # The cap and one real failure together are still Medium, because the
@@ -718,6 +761,7 @@ Cases:
       device.BrowserReleaseAge: 18
       ip.HumanProbability: 9
       ip.ConnectionType: Unknown
+      agent-signature.AgentSignature: Absent
     Expect: { Value: Medium }
 
   # An unmeasured window and a browser past three months, which is the
@@ -733,4 +777,93 @@ Cases:
       device.BrowserReleaseAge: 18
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Absent
     Expect: { Value: Unknown }
+
+  # A verified Web Bot Auth signature is decisive. The agent has said who
+  # it is, so the answer is Low however human everything else looks.
+  - Name: a verified agent signature is Low when every other check passes
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "False" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "True" }
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Verified
+    Expect: { Value: Low }
+
+  # It is decisive before the JavaScript has run as well, because a
+  # signature is checked on the request itself.
+  - Name: a verified agent signature is Low before the JavaScript has run
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "Unknown" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "Unknown" }
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Verified
+    Expect: { Value: Low }
+
+  # Only Verified is decisive. A signature that is invalid, unverified or
+  # whose check timed out says nothing either way, so the answer is what
+  # the rest of the request gives.
+  - Name: an invalid agent signature changes nothing
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "False" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "True" }
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Invalid
+    Expect: { Value: High }
+
+  - Name: an unverified agent signature changes nothing
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "False" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "True" }
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Unverified
+    Expect: { Value: High }
+
+  - Name: an agent signature check that timed out changes nothing
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "False" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "True" }
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+      agent-signature.AgentSignature: Timeout
+    Expect: { Value: High }
+
+  # A pipeline with no element publishing agent-signature cannot read the
+  # property, so the whole derived property has no value.
+  - Name: the agent signature element is not in the pipeline
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "False" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "True" }
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+    Expect:
+      Missing:
+        - agent-signature.AgentSignature
