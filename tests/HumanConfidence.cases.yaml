@@ -6,13 +6,13 @@
 # rather than the native type, which is how a value read from a data file
 # or from a cloud response usually arrives.
 #
-# The script names eight source properties and every one of them is
+# The script names ten source properties and every one of them is
 # necessary, because a property is either present or it is not. Where one
 # is absent the whole property has no value and the message names every
 # property that could not be read, which is what Expect: { Missing: [...] }
 # below asserts.
 #
-# Two of the eight, device.IsVisible and device.HasWebDriver, carry the
+# Two of the ten, device.IsVisible and device.HasWebDriver, carry the
 # string Unknown until the 51Degrees JavaScript has run, and the script
 # reads both as strings so that it can see that value rather than losing
 # it. Where either holds Unknown the answer is the value Unknown, and
@@ -36,6 +36,8 @@ Cases:
       device.IsVisible: true
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 2
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
     Expect: { Value: High }
@@ -50,6 +52,8 @@ Cases:
       device.IsVisible: { String: "True" }
       device.BrowserReleaseYear: { String: "2026" }
       device.BrowserReleaseAge: { String: "1" }
+      device.BrowserPreviewYear: { String: "2026" }
+      device.BrowserPreviewAge: { String: "2" }
       ip.HumanProbability: { String: "9" }
       ip.ConnectionType: { String: "Broadband" }
     Expect: { Value: High }
@@ -64,6 +68,8 @@ Cases:
       device.IsVisible: true
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 2
       ip.HumanProbability:
         - { Value: 2, Weight: 1 }
         - { Value: 9, Weight: 9 }
@@ -81,6 +87,8 @@ Cases:
       device.IsVisible: true
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 2
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
     Expect: { Value: Low }
@@ -95,6 +103,8 @@ Cases:
       device.IsVisible: true
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 2
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
     Expect: { Value: Low }
@@ -109,6 +119,8 @@ Cases:
       device.IsVisible: true
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 2
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
     Expect: { Value: Low }
@@ -123,6 +135,8 @@ Cases:
       device.IsVisible: false
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 2
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
     Expect: { Value: Medium }
@@ -137,6 +151,8 @@ Cases:
       device.IsVisible: true
       device.BrowserReleaseYear: 2019
       device.BrowserReleaseAge: 84
+      device.BrowserPreviewYear: 2019
+      device.BrowserPreviewAge: 85
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
     Expect: { Value: Medium }
@@ -154,6 +170,8 @@ Cases:
       device.IsVisible: true
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 2
       ip.HumanProbability: -1
       ip.ConnectionType: Cellular
     Expect: { Value: High }
@@ -170,6 +188,8 @@ Cases:
       device.IsVisible: true
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 2
       ip.HumanProbability: 2
       ip.ConnectionType: Broadband
     Expect: { Value: Medium }
@@ -185,6 +205,8 @@ Cases:
       device.IsVisible: true
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 2
       ip.HumanProbability: 7
       ip.ConnectionType: Broadband
     Expect: { Value: High }
@@ -199,6 +221,8 @@ Cases:
       device.IsVisible: true
       device.BrowserReleaseYear: 2019
       device.BrowserReleaseAge: 84
+      device.BrowserPreviewYear: 2019
+      device.BrowserPreviewAge: 85
       ip.HumanProbability: 2
       ip.ConnectionType: Broadband
     Expect: { Value: Low }
@@ -214,6 +238,8 @@ Cases:
       device.IsVisible: false
       device.BrowserReleaseYear: 2019
       device.BrowserReleaseAge: 84
+      device.BrowserPreviewYear: 2019
+      device.BrowserPreviewAge: 85
       ip.HumanProbability: 2
       ip.ConnectionType: Broadband
     Expect: { Value: Low }
@@ -228,6 +254,8 @@ Cases:
       device.IsHeadless: false
       device.IsVisible: true
       device.BrowserReleaseYear: 2026
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 2
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
     Expect: { Missing: [ device.BrowserReleaseAge ] }
@@ -243,6 +271,8 @@ Cases:
       device.IsVisible: true
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 2
     Expect:
       Missing:
         - ip.HumanProbability
@@ -259,9 +289,14 @@ Cases:
       device.IsVisible: true
       device.BrowserReleaseYear: { String: "Unknown" }
       device.BrowserReleaseAge: 1
+      device.BrowserPreviewYear: { String: "Unknown" }
+      device.BrowserPreviewAge: 0
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
-    Expect: { Missing: [ device.BrowserReleaseYear ] }
+    Expect:
+      Missing:
+        - device.BrowserReleaseYear
+        - device.BrowserPreviewYear
 
   # The two properties this version is about, absent rather than carrying
   # Unknown. Answering the value Unknown is for a property that is present
@@ -277,6 +312,8 @@ Cases:
       device.IsHeadless: false
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 2
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
     Expect: { Missing: [ device.IsVisible ] }
@@ -288,6 +325,8 @@ Cases:
       device.IsVisible: { String: "True" }
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 2
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
     Expect: { Missing: [ device.HasWebDriver ] }
@@ -300,6 +339,8 @@ Cases:
       device.IsHeadless: false
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 2
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
     Expect:
@@ -322,12 +363,16 @@ Cases:
       device.IsVisible: { String: "Unknown" }
       device.BrowserReleaseYear: { String: "Unknown" }
       device.BrowserReleaseAge: { String: "N/A" }
+      device.BrowserPreviewYear: { String: "N/A" }
+      device.BrowserPreviewAge: { String: "N/A" }
       ip.HumanProbability: { String: "" }
     Expect:
       Missing:
         - device.IsCrawler
         - device.IsHeadless
         - device.BrowserReleaseYear
+        - device.BrowserPreviewYear
+        - device.BrowserPreviewAge
         - device.BrowserReleaseAge
         - ip.HumanProbability
         - ip.ConnectionType
@@ -343,6 +388,8 @@ Cases:
         - device.IsHeadless
         - device.IsVisible
         - device.BrowserReleaseYear
+        - device.BrowserPreviewYear
+        - device.BrowserPreviewAge
         - device.BrowserReleaseAge
         - ip.HumanProbability
         - ip.ConnectionType
@@ -359,6 +406,8 @@ Cases:
       device.IsVisible: true
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 2
       ip.HumanProbability: { String: "3000000000" }
       ip.ConnectionType: Broadband
     Expect: { Missing: [ ip.HumanProbability ] }
@@ -377,6 +426,8 @@ Cases:
       device.IsVisible: { String: "Unknown" }
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 2
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
     Expect: { Value: Unknown }
@@ -393,6 +444,8 @@ Cases:
       device.IsVisible: { String: "Unknown" }
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 2
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
     Expect: { Value: Low }
@@ -406,6 +459,8 @@ Cases:
       device.IsVisible: { String: "Unknown" }
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 2
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
     Expect: { Value: Low }
@@ -420,6 +475,8 @@ Cases:
       device.IsVisible: { String: "Unknown" }
       device.BrowserReleaseYear: { String: "2026" }
       device.BrowserReleaseAge: { String: "1" }
+      device.BrowserPreviewYear: { String: "2026" }
+      device.BrowserPreviewAge: { String: "2" }
       ip.HumanProbability: { String: "9" }
       ip.ConnectionType: { String: "Broadband" }
     Expect: { Value: Unknown }
@@ -438,6 +495,8 @@ Cases:
       device.IsVisible: true
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 2
       ip.HumanProbability: 9
       ip.ConnectionType: Hosting & Anonymous
     Expect: { Value: Medium }
@@ -451,6 +510,8 @@ Cases:
       device.IsVisible: true
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 2
       ip.HumanProbability: 9
       ip.ConnectionType: Cellular
     Expect: { Value: High }
@@ -468,6 +529,8 @@ Cases:
       device.IsVisible: true
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 2
       ip.HumanProbability: 9
       ip.ConnectionType: Unknown
     Expect: { Value: Medium }
@@ -482,6 +545,8 @@ Cases:
       device.IsVisible: true
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 2
       ip.HumanProbability: 1
       ip.ConnectionType: Hosting & Anonymous
     Expect: { Value: Low }
@@ -520,6 +585,8 @@ Cases:
       device.IsVisible: { String: "True" }
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 2
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
     Expect: { Value: High }
@@ -534,6 +601,8 @@ Cases:
       device.IsVisible: { String: "True" }
       device.BrowserReleaseYear: 2019
       device.BrowserReleaseAge: 84
+      device.BrowserPreviewYear: 2019
+      device.BrowserPreviewAge: 85
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
     Expect: { Value: Medium }
@@ -547,6 +616,8 @@ Cases:
       device.IsVisible: { String: "True" }
       device.BrowserReleaseYear: 2019
       device.BrowserReleaseAge: 84
+      device.BrowserPreviewYear: 2019
+      device.BrowserPreviewAge: 85
       ip.HumanProbability: 2
       ip.ConnectionType: Broadband
     Expect: { Value: Low }
@@ -563,6 +634,8 @@ Cases:
       device.IsVisible: { String: "Unknown" }
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 2
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
     Expect: { Value: Unknown }
@@ -580,6 +653,8 @@ Cases:
       device.IsVisible: { String: "Unknown" }
       device.BrowserReleaseYear: 2019
       device.BrowserReleaseAge: 84
+      device.BrowserPreviewYear: 2019
+      device.BrowserPreviewAge: 85
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
     Expect: { Value: Unknown }
@@ -596,6 +671,8 @@ Cases:
       device.IsVisible: { String: "Unknown" }
       device.BrowserReleaseYear: 2019
       device.BrowserReleaseAge: 84
+      device.BrowserPreviewYear: 2019
+      device.BrowserPreviewAge: 85
       ip.HumanProbability: 2
       ip.ConnectionType: Broadband
     Expect: { Value: Unknown }
@@ -610,6 +687,8 @@ Cases:
       device.IsVisible: { String: "False" }
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 2
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
     Expect: { Value: Medium }
@@ -626,6 +705,8 @@ Cases:
       device.IsVisible: { String: "False" }
       device.BrowserReleaseYear: 2019
       device.BrowserReleaseAge: 84
+      device.BrowserPreviewYear: 2019
+      device.BrowserPreviewAge: 85
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
     Expect: { Value: Low }
@@ -643,6 +724,8 @@ Cases:
       device.IsVisible: { String: "True" }
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 2
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
     Expect: { Value: Unknown }
@@ -660,6 +743,8 @@ Cases:
       device.IsVisible: { String: "N/A" }
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 1
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 2
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
     Expect: { Value: Medium }
@@ -675,6 +760,8 @@ Cases:
       device.IsVisible: { String: "True" }
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 3
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 4
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
     Expect: { Value: High }
@@ -687,6 +774,8 @@ Cases:
       device.IsVisible: { String: "True" }
       device.BrowserReleaseYear: 2026
       device.BrowserReleaseAge: 4
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 5
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
     Expect: { Value: Medium }
@@ -702,6 +791,8 @@ Cases:
       device.IsVisible: { String: "True" }
       device.BrowserReleaseYear: 2025
       device.BrowserReleaseAge: 18
+      device.BrowserPreviewYear: 2025
+      device.BrowserPreviewAge: 19
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
     Expect: { Value: Medium }
@@ -716,6 +807,8 @@ Cases:
       device.IsVisible: { String: "True" }
       device.BrowserReleaseYear: 2025
       device.BrowserReleaseAge: 18
+      device.BrowserPreviewYear: 2025
+      device.BrowserPreviewAge: 19
       ip.HumanProbability: 9
       ip.ConnectionType: Unknown
     Expect: { Value: Medium }
@@ -731,6 +824,196 @@ Cases:
       device.IsVisible: { String: "Unknown" }
       device.BrowserReleaseYear: 2025
       device.BrowserReleaseAge: 18
+      device.BrowserPreviewYear: 2025
+      device.BrowserPreviewAge: 19
       ip.HumanProbability: 9
       ip.ConnectionType: Broadband
     Expect: { Value: Unknown }
+
+  # Version 0.8.0. A browser the data file has seen in preview but not
+  # yet in release. The release year and age are 0, which is what the
+  # typed accessor of the device detection engine hands a script for a
+  # stored N/A (common-cxx ResultsBase.cpp line 172).
+  - Name: a browser in preview with no release date reaches High
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "False" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "True" }
+      device.BrowserReleaseYear: 0
+      device.BrowserReleaseAge: 0
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 1
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+    Expect: { Value: High }
+
+  - Name: a preview three months old still reaches High
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "False" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "True" }
+      device.BrowserReleaseYear: 0
+      device.BrowserReleaseAge: 0
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 3
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+    Expect: { Value: High }
+
+  - Name: a preview four months old is capped at Medium
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "False" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "True" }
+      device.BrowserReleaseYear: 0
+      device.BrowserReleaseAge: 0
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 4
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+    Expect: { Value: Medium }
+
+  # Twenty-four months fails PreviewIsCurrent, so the browser counts as
+  # one failed check, as a released browser of that age does.
+  - Name: a preview two years old is counted against the request
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "False" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "True" }
+      device.BrowserReleaseYear: 0
+      device.BrowserReleaseAge: 0
+      device.BrowserPreviewYear: 2024
+      device.BrowserPreviewAge: 24
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+    Expect: { Value: Medium }
+
+  - Name: a preview two years old on an unknown connection
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "False" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "True" }
+      device.BrowserReleaseYear: 0
+      device.BrowserReleaseAge: 0
+      device.BrowserPreviewYear: 2024
+      device.BrowserPreviewAge: 24
+      ip.HumanProbability: 9
+      ip.ConnectionType: Unknown
+    Expect: { Value: Low }
+
+  # Neither date is populated, which is an unmatched browser as the typed
+  # accessor hands it to a script. Every date reads 0, so the preview
+  # year guard keeps PreviewIsCurrent false and the browser counts as one
+  # failed check.
+  - Name: a browser with neither date is counted against the request
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "False" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "True" }
+      device.BrowserReleaseYear: 0
+      device.BrowserReleaseAge: 0
+      device.BrowserPreviewYear: 0
+      device.BrowserPreviewAge: 0
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+    Expect: { Value: Medium }
+
+  # A populated release date is read ahead of the preview date, so a
+  # preview date newer than the release date changes nothing.
+  - Name: a release date is read ahead of the preview date
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "False" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "True" }
+      device.BrowserReleaseYear: 2019
+      device.BrowserReleaseAge: 84
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 1
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+    Expect: { Value: Medium }
+
+  # The preview date does not change the order of the rules. An unmeasured
+  # window still answers Unknown and a crawler still answers Low.
+  - Name: a browser in preview before the JavaScript has run
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "Unknown" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "Unknown" }
+      device.BrowserReleaseYear: 0
+      device.BrowserReleaseAge: 0
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 1
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+    Expect: { Value: Unknown }
+
+  - Name: a crawler on a browser in preview
+    Properties:
+      device.IsCrawler: true
+      device.HasWebDriver: { String: "False" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "True" }
+      device.BrowserReleaseYear: 0
+      device.BrowserReleaseAge: 0
+      device.BrowserPreviewYear: 2026
+      device.BrowserPreviewAge: 1
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+    Expect: { Value: Low }
+
+  # The two preview properties are necessary, as every named property is.
+  - Name: device.BrowserPreviewYear is absent
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "False" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "True" }
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      device.BrowserPreviewAge: 2
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+    Expect: { Missing: [ device.BrowserPreviewYear ] }
+
+  - Name: device.BrowserPreviewAge is absent
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "False" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "True" }
+      device.BrowserReleaseYear: 2026
+      device.BrowserReleaseAge: 1
+      device.BrowserPreviewYear: 2026
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+    Expect: { Missing: [ device.BrowserPreviewAge ] }
+
+  # As the data file stores a browser in preview, the release year and
+  # age are the string N/A, which an Int never reads, so the reference
+  # evaluator gives no value. The typed accessor of the device detection
+  # engine hands 0 instead, which the cases above model.
+  - Name: a browser in preview as the data file stores it leaves no value
+    Properties:
+      device.IsCrawler: false
+      device.HasWebDriver: { String: "False" }
+      device.IsHeadless: false
+      device.IsVisible: { String: "True" }
+      device.BrowserReleaseYear: { String: "N/A" }
+      device.BrowserReleaseAge: { String: "N/A" }
+      device.BrowserPreviewYear: { String: "2026" }
+      device.BrowserPreviewAge: { String: "1" }
+      ip.HumanProbability: 9
+      ip.ConnectionType: Broadband
+    Expect:
+      Missing:
+        - device.BrowserReleaseYear
+        - device.BrowserReleaseAge

@@ -3,9 +3,15 @@
 # Returns High, Medium, Low or Unknown for the confidence that the request
 # came from a device being used by a human who is viewing the page.
 #
-# THIS SCRIPT IS A DRAFT AT VERSION 0.7.0. The thresholds below have not
+# THIS SCRIPT IS A DRAFT AT VERSION 0.8.0. The thresholds below have not
 # been reviewed by the 51Degrees Senior Data Operators, which is the one
 # thing holding it below 1.0.0.
+#
+# What changed in 0.8.0, and why
+# ------------------------------
+# The preview age of the browser is now considered. Where the preview is
+# fresh and there is no release date this will not reduce the human
+# confidence.
 #
 # What changed in 0.7.0, and why
 # ------------------------------
@@ -132,7 +138,7 @@
 #
 # The source properties, and what each one is
 # -------------------------------------------
-# Eight properties, all read from the 51Degrees property metadata and
+# Ten properties, all read from the 51Degrees property metadata and
 # checked against a production data file. Naming a property makes it
 # necessary, so the script names no others.
 #
@@ -153,6 +159,14 @@
 #   device.BrowserReleaseAge  Int, months since the release year and
 #                             month, default 0. NOT mandatory, which is
 #                             the risk recorded at the bottom.
+#   device.BrowserPreviewYear Int, mandatory, default Unknown. The year
+#                             the version was first released as a beta or
+#                             developer build, before the stable release.
+#                             The data carries N/A and Unknown as well as
+#                             years.
+#   device.BrowserPreviewAge  Int, months since the preview year and
+#                             month, default 0. NOT mandatory, as for
+#                             BrowserReleaseAge.
 #   ip.HumanProbability       Int, mandatory, default -1. A 0 to 10 scale
 #                             where -1 means the address has not been
 #                             rated. The production data carries only
@@ -321,7 +335,7 @@
 
 Format: 1
 Name: HumanConfidence
-Version: 0.7.0
+Version: 0.8.0
 Output:
   Name: HumanConfidence
   Description: The confidence that the request came from a device being used by a human who is viewing the page. Returns one of High, Medium, Low or Unknown. Whether the browser window was in view cannot be known from the request alone, so until the 51Degrees JavaScript has run the answer is Unknown.
@@ -348,18 +362,36 @@ Checks:
   WindowNotMeasured: { Property: device.IsVisible,    Eq: "Unknown" }
   WebDriverNotAsked: { Property: device.HasWebDriver, Eq: "Unknown" }
   WindowInView: { Property: device.IsVisible,    Eq: "True" }
-  BrowserIsCurrent:
+  # This check considers whether the browser is in preview (beta/dev).
+  # Where the release date is not populated the preview is then checked.
+  # Where the preview is fresh or current it does not reduce the
+  # HumanConfidence.
+  PreviewIsFresh:
     All:
-      - { Property: device.BrowserReleaseYear, Gt: 0 }
-      - { Property: device.BrowserReleaseAge,  Lt: 24 }
+      - { Property: device.BrowserReleaseYear, Le: 0 }
+      - { Property: device.BrowserPreviewYear, Gt: 0 }
+      - { Property: device.BrowserPreviewAge,  Le: 3 }
+  PreviewIsCurrent:
+    All:
+      - { Property: device.BrowserReleaseYear, Le: 0 }
+      - { Property: device.BrowserPreviewYear, Gt: 0 }
+      - { Property: device.BrowserPreviewAge,  Lt: 24 }
+  BrowserIsCurrent:
+    Any:
+      - All:
+          - { Property: device.BrowserReleaseYear, Gt: 0 }
+          - { Property: device.BrowserReleaseAge,  Lt: 24 }
+      - { Check: PreviewIsCurrent }
   # Only High reads this one, so an older browser caps the answer rather
   # than counting against it. The year is tested as well as the age
   # because an unmatched browser leaves the age at its default of 0,
   # which would otherwise read as the freshest possible.
   BrowserIsFresh:
-    All:
-      - { Property: device.BrowserReleaseYear, Gt: 0 }
-      - { Property: device.BrowserReleaseAge,  Le: 3 }
+    Any:
+      - All:
+          - { Property: device.BrowserReleaseYear, Gt: 0 }
+          - { Property: device.BrowserReleaseAge,  Le: 3 }
+      - { Check: PreviewIsFresh }
   AddressNotAgainstHuman:
     Any:
       - { Property: ip.HumanProbability, Ge: 7 }
