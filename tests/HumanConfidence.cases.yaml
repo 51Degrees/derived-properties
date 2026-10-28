@@ -6,13 +6,12 @@
 # rather than the native type, which is how a value read from a data file
 # or from a cloud response usually arrives.
 #
-# The script names ten source properties and every one of them is
-# necessary, because a property is either present or it is not. Where one
-# is absent the whole property has no value and the message names every
-# property that could not be read, which is what Expect: { Missing: [...] }
-# below asserts.
+# Every source property the script names is necessary, because a
+# property is either present or it is not. Where one is absent the whole
+# property has no value and the message names every property that could
+# not be read, which is what Expect: { Missing: [...] } below asserts.
 #
-# Two of the ten, device.IsVisible and device.HasWebDriver, carry the
+# Two of them, device.IsVisible and device.HasWebDriver, carry the
 # string Unknown until the 51Degrees JavaScript has run, and the script
 # reads both as strings so that it can see that value rather than losing
 # it. Where either holds Unknown the answer is the value Unknown, and
@@ -833,7 +832,7 @@ Cases:
   # Version 0.8.0. A browser the data file has seen in preview but not
   # yet in release. The release year and age are 0, which is what the
   # typed accessor of the device detection engine hands a script for a
-  # stored N/A (common-cxx ResultsBase.cpp line 172).
+  # stored N/A (common-cxx ResultsBase::getValueAsInteger).
   - Name: a browser in preview with no release date reaches High
     Properties:
       device.IsCrawler: false
