@@ -7,9 +7,18 @@
 # been reviewed by the 51Degrees Senior Data Operators, which is the one
 # thing holding it below 1.0.0.
 #
-# This comment records why the script is the way it is. What it does is
-# the Checks and Rules below, and the cases file proves it, so neither is
-# described again here.
+# How it decides
+# --------------
+# Proof of automation answers Low first. Where the 51Degrees JavaScript
+# has not run the answer is Unknown. Otherwise signals that a human may
+# be there are counted, such as the window being in view or the
+# connection being one people browse on. Every signal passing on a
+# recently updated browser is High, one failing is Medium, and more is
+# Low.
+#
+# The rest of this comment records why the script is the way it is. The
+# exact checks are the Checks and Rules below, and the cases file proves
+# them, so they are not described again here.
 #
 # What changed in 0.8.0, and why
 # ------------------------------
