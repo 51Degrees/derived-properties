@@ -10,9 +10,9 @@ name: Consumer tests
 # Written in the style of the same check in javascript-templates, at
 # https://github.com/51Degrees/javascript-templates/blob/main/.github/workflows/consumer-tests.yml
 #
-# Only pipeline-dotnet is listed today because it is the first language to
-# ship the element. A row is added for pipeline-node, pipeline-java,
-# pipeline-python and the PHP package as each one lands.
+# Only 51degrees-dotnet is listed today because .NET is the first language to
+# ship the element. A row is added for 51degrees-node, 51degrees-java,
+# the Python SDK and the PHP package as each one lands.
 
 on:
   pull_request:
@@ -24,7 +24,7 @@ on:
   workflow_dispatch:
     inputs:
       pipeline-dotnet-ref:
-        description: Branch, tag or SHA of pipeline-dotnet to test against
+        description: Branch, tag or SHA of 51degrees-dotnet to test against
         required: false
         default: main
 
@@ -33,7 +33,7 @@ permissions:
 
 jobs:
   pipeline-dotnet:
-    name: pipeline-dotnet derived property element
+    name: 51degrees-dotnet derived property element
     runs-on: ubuntu-latest
     steps:
       - name: Check out the scripts under review
@@ -41,18 +41,20 @@ jobs:
         with:
           path: derived
 
-      - name: Check out pipeline-dotnet
+      - name: Check out 51degrees-dotnet
         uses: actions/checkout@v4
         with:
-          repository: 51Degrees/pipeline-dotnet
+          repository: 51Degrees/51degrees-dotnet
           ref: ${{ inputs.pipeline-dotnet-ref || 'main' }}
-          submodules: recursive
+          # The Pipeline API packages are under pipeline/ and need only the
+          # direct submodules, not the data files under cxx/.
+          submodules: true
           path: consumer
 
       - name: Swap in the scripts and cases under review
         run: |
           set -euo pipefail
-          dest=consumer/FiftyOne.Pipeline.Elements/FiftyOne.Pipeline.DerivedProperty/Scripts
+          dest=consumer/pipeline/DerivedProperty/Scripts
           if [ ! -d "$dest" ]; then
             echo "::error::$dest is missing. The submodule has moved and this workflow needs updating."
             exit 1
@@ -64,10 +66,10 @@ jobs:
           cp -r derived/scripts "$dest/scripts"
           cp -r derived/tests "$dest/tests"
           # A copy that changed nothing would run against the revision
-          # pipeline-dotnet pins and report a pass that says nothing about
+          # 51degrees-dotnet pins and report a pass that says nothing about
           # this pull request, so the difference is printed either way.
           if git -C "$dest" diff --quiet; then
-            echo "::notice::identical to the revision pipeline-dotnet pins, nothing swapped in"
+            echo "::notice::identical to the revision 51degrees-dotnet pins, nothing swapped in"
           else
             git -C "$dest" --no-pager diff --stat
           fi
@@ -77,10 +79,11 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Run the conformance runner only
-        working-directory: consumer
+        # pipeline/global.json pins the .NET 8 SDK installed above.
+        working-directory: consumer/pipeline
         run: >
           dotnet test -c Release
-          FiftyOne.Pipeline.Elements/FiftyOne.Pipeline.DerivedProperty.Tests/FiftyOne.Pipeline.DerivedPropertyTests.csproj
+          Tests/DerivedProperty.Tests/FiftyOne.Pipeline.DerivedPropertyTests.csproj
           --filter "FullyQualifiedName~ConformanceTests"
           --logger "console;verbosity=normal"
           --logger "trx;LogFileName=results.trx"
@@ -89,6 +92,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pipeline-dotnet-results
+          name: 51degrees-dotnet-results
           path: consumer/**/TestResults/*.trx
           if-no-files-found: warn
