@@ -2,7 +2,7 @@ name: Checks
 
 # Runs checks 1 to 6 of section 9 of the DerivedPropertyElement design on
 # every pull request and on every push to main. Check 7, the consumer test
-# against pipeline-dotnet, has a workflow of its own at
+# against 51degrees-dotnet, has a workflow of its own at
 # .github/workflows/consumer-tests.yml.
 
 on:
