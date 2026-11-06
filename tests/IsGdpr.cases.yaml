@@ -45,6 +45,14 @@ Cases:
       ip.CountryCode: RE
     Expect: { Value: true }
 
+  # In scope. Saint-Martin, the French outermost region most easily missed,
+  # because Saint-Barthelemy next to it is an overseas territory outside the
+  # European Union.
+  - Name: Saint-Martin, a French outermost region
+    Properties:
+      ip.CountryCode: MF
+    Expect: { Value: true }
+
   # Out of scope. The clearest case, and the one the hard coded true in
   # the Preference Management Platform gets wrong today.
   - Name: the United States
