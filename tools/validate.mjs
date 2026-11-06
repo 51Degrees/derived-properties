@@ -61,7 +61,8 @@ const OUTPUT_BOOLEANS = ['IsList', 'IsMandatory', 'IsObsolete', 'IsPopular',
   'ExportValues'];
 
 const IDENTIFIER = /^[A-Za-z][A-Za-z0-9]*$/;
-const SOURCE_PROPERTY = /^[A-Za-z][A-Za-z0-9]*\.[A-Za-z][A-Za-z0-9]*$/;
+const SOURCE_PROPERTY =
+  /^[A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)*\.[A-Za-z][A-Za-z0-9]*$/;
 const SEMANTIC_VERSION =
   /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+(?:\.[0-9A-Za-z.-]+)*)?(?:\+[0-9A-Za-z.-]+)?$/;
 

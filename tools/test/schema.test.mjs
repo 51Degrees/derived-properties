@@ -451,6 +451,23 @@ for (const [what, rule] of RULE_SHAPES) {
   });
 }
 
+test('the schema accepts an element key with single hyphens', () => {
+  const condition = {
+    Property: 'agent-signature.AgentSignature', Eq: 'Verified'
+  };
+  assert.ok(checkCondition(condition),
+    'the schema rejected a hyphenated element key. ' +
+    JSON.stringify(checkCondition.errors));
+});
+
+for (const property of ['-agent.Signature', 'agent-.Signature',
+  'agent--signature.Signature', 'agent.Sig-nature', 'agent-signature']) {
+  test(`the schema rejects '${property}' as a source property`, () => {
+    assert.equal(checkCondition({ Property: property, Eq: false }), false,
+      `the schema accepted '${property}'`);
+  });
+}
+
 test('a Values entry takes a Name on its own or with a Description', () => {
   const values = [
     { Name: 'High', Description: 'High confidence.' },

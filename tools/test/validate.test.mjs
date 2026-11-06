@@ -158,6 +158,27 @@ test('fault: more than one operator in a condition', () => {
   assertFault(faults, 'Checks.NotCrawler', 'exactly one operator');
 });
 
+test('an element key may carry single hyphens', () => {
+  const result = validateText(withLine(
+    '{ Property: device.IsCrawler, Eq: false }',
+    "{ Property: 'agent-signature.AgentSignature', Eq: Verified }"),
+    { name: 'Example', source: 'test' });
+  assert.deepEqual(result.faults, []);
+  assert.deepEqual(result.model.output.Dependencies,
+    ['agent-signature.AgentSignature']);
+});
+
+for (const property of ['-agent.Signature', 'agent-.Signature',
+  'agent--signature.Signature', 'agent.Sig-nature', 'agent-signature']) {
+  test(`fault: '${property}' is not a source property`, () => {
+    const faults = faultsOf(withLine(
+      '{ Property: device.IsCrawler, Eq: false }',
+      `{ Property: '${property}', Eq: false }`));
+    assertFault(faults, 'Checks.NotCrawler.Property',
+      'is not a source property');
+  });
+}
+
 test('fault: an operator not allowed on the inferred type', () => {
   const faults = faultsOf(withLine(
     '{ Property: device.IsCrawler, Eq: false }',
