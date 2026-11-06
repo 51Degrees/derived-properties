@@ -71,14 +71,14 @@
 # Liechtenstein and Norway, and the United Kingdom under its own version of
 # the regulation. Thirty one codes.
 #
-# The five French outermost regions are named separately, being French
-# Guiana, Guadeloupe, Martinique, Mayotte and Reunion. They are part of the
-# European Union and the regulation applies to them. Whether the data
-# returns their own codes or returns FR for them is a question about the
-# data rather than about the law, so they are named here and cost nothing
-# if the data never returns them. The Spanish and Portuguese outermost
-# regions have no separate ISO 3166-1 code and arrive as ES and PT, so they
-# need no entry.
+# The six French outermost regions are named separately, being French
+# Guiana, Guadeloupe, Martinique, Mayotte, Reunion and Saint-Martin. They
+# are part of the European Union and the regulation applies to them. Whether
+# the data returns their own codes or returns FR for them is a question
+# about the data rather than about the law, so they are named here and cost
+# nothing if the data never returns them. The Spanish and Portuguese
+# outermost regions have no separate ISO 3166-1 code and arrive as ES and
+# PT, so they need no entry.
 #
 # Deliberately absent, each for its own reason.
 #
@@ -143,7 +143,7 @@ Checks:
       "PL", "PT", "RO", "SK", "SI", "ES", "SE",
       "IS", "LI", "NO",
       "GB",
-      "GF", "GP", "MQ", "YT", "RE"
+      "GF", "GP", "MQ", "YT", "RE", "MF"
     ]
 Rules:
   - When: { Check: InScope }
