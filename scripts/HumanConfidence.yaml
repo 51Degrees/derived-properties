@@ -213,7 +213,7 @@ Name: HumanConfidence
 Version: 0.8.0
 Output:
   Name: HumanConfidence
-  Description: The confidence that the request came from a device being used by a human who is viewing the page. Returns one of High, Medium, Low or Unknown. Whether the browser window was in view cannot be known from the request alone, so until the 51Degrees JavaScript has run the answer is Unknown.
+  Description: The confidence that the request came from a device being used by a human who is viewing the page. Returns one of High, Medium, Low or Unknown. Unknown means there is insufficient evidence to give a rating.
   ValueType: string
   IsList: false
   IsMandatory: false
@@ -229,7 +229,7 @@ Output:
     - Name: Low
       Description: Almost certainly no human is directly involved in viewing the page content.
     - Name: Unknown
-      Description: The 51Degrees JavaScript has not run on this request, so whether the browser window was in view was never measured and no confidence can be given. The first request of a session, and every request of an integration that never runs the JavaScript, answers this.
+      Description: There is insufficient evidence to give a rating.
 Checks:
   IsCrawler:    { Property: device.IsCrawler,    Eq: true }
   HasWebDriver: { Property: device.HasWebDriver, Eq: "True" }
